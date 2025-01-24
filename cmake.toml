@@ -3,22 +3,29 @@ version = "3.15"
 cmkr-include = "cmake/cmkr.cmake"
 
 [project]
-name = "PluginTemplate"
+name = "x64dbg-automate"
 include-before = [
 	"cmake/msvc-static-runtime.cmake",
 	"cmake/msvc-configurations.cmake",
 ]
 
+[vcpkg]
+version = "2025.01.13"
+packages = ["grpc"]
+
+[find-package.grpc]
+required = true
+
 [fetch-content.x64dbg]
-url = "https://sourceforge.net/projects/x64dbg/files/snapshots/snapshot_2023-06-10_18-05.zip"
-sha1 = "04468bd61fb36d6b10d17f342f03ef12f5b2ce62"
+url = "https://sourceforge.net/projects/x64dbg/files/snapshots/snapshot_2025-01-17_12-45.zip"
+sha1 = "57e77f9a406647b0ad31311630e3fc44f25979b3"
 include-after = ["cmake/x64dbg.cmake"]
 
 [template.plugin]
 type = "shared"
 add-function = "x64dbg_plugin"
 
-[target.PluginTemplate]
+[target.x64dbg-automate]
 type = "plugin"
 sources = [
     "src/*.cpp",

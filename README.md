@@ -1,24 +1,6 @@
-# PluginTemplate
+# x64dbg Debug Automation Powered by GRPC
 
-Template CMake project for x64dbg plugins. This uses [cmkr](https://cmkr.build), `cmake.toml` contains the project configuration.
 
-## Using the template
-
-You can click the green *Use this template* button. See the article [*Creating a repository from a template*
-](https://docs.github.com/en/free-pro-team@latest/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) by GitHub for more details.
-
-Alternatively you can download a ZIP of this repository and set up the template locally.
-
-## Getting started
-
-- Pretty much all of the available functionality can be found in [`bridgemain.h`](https://github.com/x64dbg/x64dbg/blob/97ff1ec98a5bbf543e6d80ebbbd2401edf6c8cca/src/bridge/bridgemain.h).
-- You can find some (commented) example code in [`src/plugin.cpp`](./src/plugin.cpp).
-- Example plugins: https://plugins.x64dbg.com.
-- References:
-  - https://help.x64dbg.com/en/latest/developers/plugins/index.html
-  - https://x64dbg.com/blog/2016/10/04/architecture-of-x64dbg.html
-  - https://x64dbg.com/blog/2016/10/20/threading-model.html
-  - https://x64dbg.com/blog/2016/07/30/x64dbg-plugin-sdk.html
 
 ## Building
 

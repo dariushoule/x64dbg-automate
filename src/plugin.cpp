@@ -1,12 +1,5 @@
 #include "plugin.h"
 
-// Examples: https://github.com/x64dbg/x64dbg/wiki/Plugins
-// References:
-// - https://help.x64dbg.com/en/latest/developers/plugins/index.html
-// - https://x64dbg.com/blog/2016/10/04/architecture-of-x64dbg.html
-// - https://x64dbg.com/blog/2016/10/20/threading-model.html
-// - https://x64dbg.com/blog/2016/07/30/x64dbg-plugin-sdk.html
-
 // Command use the same signature as main in C
 // argv[0] contains the full command, after that are the arguments
 // NOTE: arguments are separated by a COMMA (not space like WinDbg)

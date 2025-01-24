@@ -1,9 +1,7 @@
 #pragma once
 
 // Plugin information
-#ifndef PLUGIN_NAME
-#error You need to define PLUGIN_NAME
-#endif // PLUGIN_NAME
+#define PLUGIN_NAME "x64dbg-automate"
 #define PLUGIN_VERSION 1
 
 #include "pluginsdk/bridgemain.h"

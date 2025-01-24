@@ -27,27 +27,41 @@ endif()
 include("cmake/msvc-static-runtime.cmake")
 include("cmake/msvc-configurations.cmake")
 
-project(PluginTemplate)
+project(x64dbg-automate)
+
+if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
+	include(FetchContent)
+	# Fix warnings about DOWNLOAD_EXTRACT_TIMESTAMP
+	if(POLICY CMP0135)
+		cmake_policy(SET CMP0135 NEW)
+	endif()
+	message(STATUS "Fetching vcpkg (2025.01.13)...")
+	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2025.01.13.tar.gz")
+	FetchContent_GetProperties(vcpkg)
+	if(NOT vcpkg_POPULATED)
+		FetchContent_Populate(vcpkg)
+		include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
+	endif()
+endif()
 
 include(FetchContent)
 
-# Fix warnings about DOWNLOAD_EXTRACT_TIMESTAMP
-if(POLICY CMP0135)
-	cmake_policy(SET CMP0135 NEW)
-endif()
 message(STATUS "Fetching x64dbg...")
 FetchContent_Declare(x64dbg
 	URL
-		"https://downloads.sourceforge.net/project/x64dbg/snapshots/snapshot_2023-06-10_18-05.zip"
+		"https://sourceforge.net/projects/x64dbg/files/snapshots/snapshot_2025-01-17_12-45.zip"
 	URL_HASH
-		SHA1=04468bd61fb36d6b10d17f342f03ef12f5b2ce62
+		SHA1=57e77f9a406647b0ad31311630e3fc44f25979b3
 )
 FetchContent_MakeAvailable(x64dbg)
 
 include("cmake/x64dbg.cmake")
 
-# Target: PluginTemplate
-set(PluginTemplate_SOURCES
+# Packages
+find_package(grpc REQUIRED)
+
+# Target: x64dbg-automate
+set(x64dbg-automate_SOURCES
 	"src/plugin.cpp"
 	"src/pluginmain.cpp"
 	"src/plugin.h"
@@ -55,8 +69,8 @@ set(PluginTemplate_SOURCES
 	cmake.toml
 )
 
-x64dbg_plugin(PluginTemplate)
+x64dbg_plugin(x64dbg-automate)
 
-target_sources(PluginTemplate PRIVATE ${PluginTemplate_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${PluginTemplate_SOURCES})
+target_sources(x64dbg-automate PRIVATE ${x64dbg-automate_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${x64dbg-automate_SOURCES})
 
