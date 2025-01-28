@@ -1,9 +1,6 @@
 #include "pluginmain.h"
 #include "plugin.h"
 
-// NOTE: This is mostly just boilerplate code, generally you work in plugin.cpp
-// Reference: https://help.x64dbg.com/en/latest/developers/plugins/basics.html#exports
-
 int pluginHandle;
 HWND hwndDlg;
 int hMenu;

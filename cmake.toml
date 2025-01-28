@@ -11,9 +11,9 @@ include-before = [
 
 [vcpkg]
 version = "2025.01.13"
-packages = ["grpc"]
+packages = ["zeromq"]
 
-[find-package.grpc]
+[find-package.zeromq]
 required = true
 
 [fetch-content.x64dbg]

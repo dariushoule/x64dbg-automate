@@ -58,7 +58,7 @@ FetchContent_MakeAvailable(x64dbg)
 include("cmake/x64dbg.cmake")
 
 # Packages
-find_package(grpc REQUIRED)
+find_package(zeromq REQUIRED)
 
 # Target: x64dbg-automate
 set(x64dbg-automate_SOURCES
