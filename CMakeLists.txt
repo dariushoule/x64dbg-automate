@@ -58,7 +58,7 @@ FetchContent_MakeAvailable(x64dbg)
 include("cmake/x64dbg.cmake")
 
 # Packages
-find_package(zeromq REQUIRED)
+find_package(cppzmq REQUIRED)
 
 # Target: x64dbg-automate
 set(x64dbg-automate_SOURCES
@@ -73,4 +73,12 @@ x64dbg_plugin(x64dbg-automate)
 
 target_sources(x64dbg-automate PRIVATE ${x64dbg-automate_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${x64dbg-automate_SOURCES})
+
+target_compile_features(x64dbg-automate PUBLIC
+	cxx_std_20
+)
+
+target_link_libraries(x64dbg-automate PUBLIC
+	cppzmq
+)
 

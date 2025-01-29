@@ -3,7 +3,9 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/build64/_deps/x64dbg-src",
+                "${workspaceFolder}/build64/vcpkg_installed/x64-windows/include"
             ],
             "defines": [
                 "_DEBUG",

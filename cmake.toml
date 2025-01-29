@@ -11,9 +11,9 @@ include-before = [
 
 [vcpkg]
 version = "2025.01.13"
-packages = ["zeromq"]
+packages = ["cppzmq"]
 
-[find-package.zeromq]
+[find-package.cppzmq]
 required = true
 
 [fetch-content.x64dbg]
@@ -31,3 +31,5 @@ sources = [
     "src/*.cpp",
     "src/*.h",
 ]
+link-libraries = ["cppzmq"]
+compile-features = ["cxx_std_20"]
