@@ -16,7 +16,6 @@ int hMenuSymmod;
 PLUG_EXPORT bool pluginit(PLUG_INITSTRUCT* initStruct)
 {
     auto srv = new XAuto::XAutoServer();
-
     initStruct->pluginVersion = PLUGIN_VERSION;
     initStruct->sdkVersion = PLUG_SDKVERSION;
     strncpy_s(initStruct->pluginName, PLUGIN_NAME, _TRUNCATE);

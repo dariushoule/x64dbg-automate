@@ -30,7 +30,9 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
             get_debugger_pid(response_buffer);
         } else if (cmd == XAUTO_REQ_COMPAT_VERSION) {
             get_compat_v(response_buffer);
-        }else if (cmd == XAUTO_REQ_DBG_EVAL) {
+        } else if (cmd == XAUTO_REQ_DEBUGGER_VERSION) {
+            get_debugger_version(response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_EVAL) {
             dbg_eval(root, response_buffer);
         } else if (cmd == XAUTO_REQ_DBG_CMD_EXEC_DIRECT) {
             dbg_cmd_exec_direct(root, response_buffer);
@@ -38,6 +40,20 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
             dbg_is_running(response_buffer);
         } else if (cmd == XAUTO_REQ_DBG_IS_DEBUGGING) {
             dbg_is_debugging(response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_IS_ELEVATED) {
+            dbg_is_elevated(response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_MEMMAP) {
+            dbg_memmap(response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_GET_BITNESS) {
+            dbg_get_bitness(response_buffer);
+        } else if (cmd == XAUTO_REQ_GUI_REFRESH_VIEWS) {
+            gui_refresh_views(response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_READ_MEMORY) {
+            dbg_read_memory(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_WRITE_MEMORY) {
+            dbg_write_memory(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_READ_REGISTERS) {
+            dbg_read_regs(response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {
             msgpack::pack(response_buffer, "OK_QUITTING");
             return DISPATCH_EXIT;
