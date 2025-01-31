@@ -3,7 +3,11 @@
   "$cmkr-url": "https://github.com/build-cpp/cmkr",
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
   "dependencies": [
-    "cppzmq"
+    "cppzmq",
+    {
+      "name": "msgpack",
+      "features": ["boost"]
+    }
   ],
   "description": "",
   "name": "x64dbg-automate",

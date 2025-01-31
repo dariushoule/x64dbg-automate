@@ -11,9 +11,15 @@ include-before = [
 
 [vcpkg]
 version = "2025.01.13"
-packages = ["cppzmq"]
+packages = ["cppzmq", "msgpack[boost]"]
 
 [find-package.cppzmq]
+required = true
+
+[find-package.msgpack-cxx]
+required = true
+
+[find-package.Boost]
 required = true
 
 [fetch-content.x64dbg]
@@ -31,5 +37,5 @@ sources = [
     "src/*.cpp",
     "src/*.h",
 ]
-link-libraries = ["cppzmq"]
+link-libraries = ["cppzmq", "msgpack-cxx"]
 compile-features = ["cxx_std_20"]

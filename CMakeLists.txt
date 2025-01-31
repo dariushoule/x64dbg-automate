@@ -60,12 +60,20 @@ include("cmake/x64dbg.cmake")
 # Packages
 find_package(cppzmq REQUIRED)
 
+find_package(msgpack-cxx REQUIRED)
+
+find_package(Boost REQUIRED)
+
 # Target: x64dbg-automate
 set(x64dbg-automate_SOURCES
 	"src/plugin.cpp"
 	"src/pluginmain.cpp"
+	"src/xauto_cmd.cpp"
+	"src/xauto_server.cpp"
 	"src/plugin.h"
 	"src/pluginmain.h"
+	"src/xauto_cmd.h"
+	"src/xauto_server.h"
 	cmake.toml
 )
 
@@ -80,5 +88,6 @@ target_compile_features(x64dbg-automate PUBLIC
 
 target_link_libraries(x64dbg-automate PUBLIC
 	cppzmq
+	msgpack-cxx
 )
 
