@@ -30,6 +30,8 @@
 #include "pluginsdk/TitanEngine/TitanEngine.h"
 #include "pluginsdk/XEDParse/XEDParse.h"
 
+#include "xauto_server.h"
+
 #ifdef _WIN64
 #pragma comment(lib, "pluginsdk/x64dbg.lib")
 #pragma comment(lib, "pluginsdk/x64bridge.lib")
@@ -64,3 +66,6 @@ extern int hMenuStack;
 extern int hMenuGraph;
 extern int hMenuMemmap;
 extern int hMenuSymmod;
+
+// Server instance
+extern XAuto::XAutoServer* srv;

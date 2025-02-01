@@ -1,6 +1,5 @@
 #include "pluginmain.h"
 #include "plugin.h"
-#include "xauto_server.h"
 
 int pluginHandle;
 HWND hwndDlg;
@@ -13,9 +12,12 @@ int hMenuMemmap;
 int hMenuSymmod;
 
 
+XAuto::XAutoServer* srv;
+
+
 PLUG_EXPORT bool pluginit(PLUG_INITSTRUCT* initStruct)
 {
-    auto srv = new XAuto::XAutoServer();
+    srv = new XAuto::XAutoServer();
     initStruct->pluginVersion = PLUGIN_VERSION;
     initStruct->sdkVersion = PLUG_SDKVERSION;
     strncpy_s(initStruct->pluginName, PLUGIN_NAME, _TRUNCATE);

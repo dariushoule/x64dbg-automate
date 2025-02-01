@@ -64,11 +64,10 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
 }
 
 
-void XAuto::XAutoServer::xauto_srv_thread() {
-    zmq::context_t context{1};
+void XAuto::XAutoServer::xauto_srv_req_rep_thread() {
     zmq::socket_t socket{context, zmq::socket_type::rep};
-    socket.bind(("tcp://localhost:" + std::to_string(SESS_PORT)).c_str());
-    dprintf("Allocated port: %d\n", SESS_PORT);
+    socket.bind(("tcp://localhost:" + std::to_string(SESS_REQ_REP_PORT)).c_str());
+    dprintf("Allocated REQ/REP port: %d\n", SESS_REQ_REP_PORT);
 
     try {
         for (;;) 
@@ -117,6 +116,14 @@ void XAuto::XAutoServer::acquire_session() {
 }
 
 XAuto::XAutoServer::XAutoServer() {
+    context = zmq::context_t(1);
     acquire_session();
-    std::thread(std::bind(&XAutoServer::xauto_srv_thread, this)).detach();
+
+    // Request-Reply Sock
+    std::thread(std::bind(&XAutoServer::xauto_srv_req_rep_thread, this)).detach();
+
+    // Pub-Sub Sock
+    pub_sock = zmq::socket_t(context, zmq::socket_type::pub);
+    pub_sock.bind(("tcp://localhost:" + std::to_string(SESS_PUB_SUB_PORT)).c_str());
+    dprintf("Allocated PUB/SUB port: %d\n", SESS_PUB_SUB_PORT);
 }

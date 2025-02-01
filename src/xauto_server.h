@@ -22,19 +22,22 @@ constexpr const char* XAUTO_REQ_DBG_WRITE_MEMORY = "XAUTO_REQ_DBG_WRITE_MEMORY";
 constexpr const char* XAUTO_REQ_DBG_READ_REGISTERS = "XAUTO_REQ_DBG_READ_REGISTERS";
 
 
-#define SESS_PORT 41600 + xauto_session_id
+#define SESS_REQ_REP_PORT 41600 + xauto_session_id
+#define SESS_PUB_SUB_PORT 51600 + xauto_session_id
 
 
 namespace XAuto {
     class XAutoServer {
-        private:
-        uint16_t xauto_session_id = 0;
-
-        void xauto_srv_thread();
-        void acquire_session();
-        int _dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer);
-
         public:
         XAutoServer();
+        zmq::socket_t pub_sock;
+
+        private:
+        uint16_t xauto_session_id = 0;
+        zmq::context_t context;
+
+        void xauto_srv_req_rep_thread();
+        void acquire_session();
+        int _dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer);
     };
 }
