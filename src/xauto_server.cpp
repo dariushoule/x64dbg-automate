@@ -64,6 +64,12 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
             dbg_write_setting_uint(root, response_buffer);
         } else if (cmd == XAUTO_REQ_DBG_IS_VALID_READ_PTR) {
             dbg_is_valid_read_ptr(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DISASSEMBLE) {
+            disassemble_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_ASSEMBLE) {
+            assemble_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_GET_BREAKPOINTS) {
+            get_breakpoints(root, response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {
             msgpack::pack(response_buffer, "OK_QUITTING");
             return DISPATCH_EXIT;

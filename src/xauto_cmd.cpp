@@ -370,3 +370,102 @@ void dbg_is_valid_read_ptr(msgpack::object root, msgpack::sbuffer& response_buff
     root.via.array.ptr[1].convert(addr);
     msgpack::pack(response_buffer, DbgMemIsValidReadPtr(addr));
 }
+
+void disassemble_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+    DISASM_INSTR instr;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    DbgDisasmAt(addr, &instr);
+    msgpack::pack(response_buffer, DisasmTup(
+        std::string(instr.instruction),
+        instr.argcount,
+        instr.instr_size,
+        instr.type,
+        {
+            DisasmArgTup(
+                std::string(instr.arg[0].mnemonic),
+                instr.arg[0].type,
+                instr.arg[0].segment,
+                instr.arg[0].constant,
+                instr.arg[0].value,
+                instr.arg[0].memvalue
+            ),
+            DisasmArgTup(
+                std::string(instr.arg[1].mnemonic),
+                instr.arg[1].type,
+                instr.arg[1].segment,
+                instr.arg[1].constant,
+                instr.arg[1].value,
+                instr.arg[1].memvalue
+            ),
+            DisasmArgTup(
+                std::string(instr.arg[2].mnemonic),
+                instr.arg[2].type,
+                instr.arg[2].segment,
+                instr.arg[2].constant,
+                instr.arg[2].value,
+                instr.arg[2].memvalue
+            )
+        }
+    ));
+}
+
+void assemble_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+    std::string instr;
+
+    if(root.via.array.size < 3 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER || root.via.array.ptr[2].type != msgpack::type::STR) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    root.via.array.ptr[2].convert(instr);
+    msgpack::pack(response_buffer, DbgAssembleAt(addr, instr.c_str()));
+}
+
+void get_breakpoints(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t bp_type;
+    BPMAP bp_list;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(bp_type);
+
+    int n_bps = DbgGetBpList((BPXTYPE)bp_type, &bp_list);
+    std::vector<BpxTup> bp_vec;
+    for (int i = 0; i < n_bps; i++) {
+        bp_vec.push_back(BpxTup(
+            bp_list.bp[i].type,
+            bp_list.bp[i].addr,
+            bp_list.bp[i].enabled,
+            bp_list.bp[i].singleshoot,
+            bp_list.bp[i].active,
+            std::string(bp_list.bp[i].name),
+            std::string(bp_list.bp[i].mod),
+            bp_list.bp[i].slot,
+            bp_list.bp[i].typeEx,
+            bp_list.bp[i].hwSize,
+            bp_list.bp[i].hitCount,
+            bp_list.bp[i].fastResume,
+            bp_list.bp[i].silent,
+            std::string(bp_list.bp[i].breakCondition),
+            std::string(bp_list.bp[i].logText),
+            std::string(bp_list.bp[i].logCondition),
+            std::string(bp_list.bp[i].commandText),
+            std::string(bp_list.bp[i].commandCondition)
+        ));
+        BridgeFree(bp_list.bp);
+    }
+
+    msgpack::pack(response_buffer, bp_vec);
+}

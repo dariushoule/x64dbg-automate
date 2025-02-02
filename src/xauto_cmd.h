@@ -67,3 +67,14 @@ void dbg_write_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffe
 void dbg_read_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer);
 void dbg_write_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer);
 void dbg_is_valid_read_ptr(msgpack::object root, msgpack::sbuffer& response_buffer);
+
+typedef std::tuple<std::string, size_t, size_t, size_t, size_t, size_t> DisasmArgTup;
+typedef std::tuple<std::string, size_t, size_t, size_t, std::array<DisasmArgTup, 3>> DisasmTup;
+void disassemble_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+void assemble_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+
+typedef std::tuple<
+    size_t, size_t, bool, bool, bool, std::string, std::string, 
+    uint16_t, uint8_t, uint8_t, size_t, bool, bool, std::string, 
+    std::string, std::string, std::string, std::string> BpxTup;
+void get_breakpoints(msgpack::object root, msgpack::sbuffer& response_buffer);
