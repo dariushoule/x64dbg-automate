@@ -358,3 +358,15 @@ void dbg_write_setting_uint(msgpack::object root, msgpack::sbuffer& response_buf
     bool res = BridgeSettingSetUint(section.c_str(), setting_name.c_str(), setting_val);
     msgpack::pack(response_buffer, res);
 }
+
+void dbg_is_valid_read_ptr(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    msgpack::pack(response_buffer, DbgMemIsValidReadPtr(addr));
+}

@@ -66,3 +66,4 @@ void dbg_read_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffer
 void dbg_write_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffer);
 void dbg_read_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer);
 void dbg_write_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer);
+void dbg_is_valid_read_ptr(msgpack::object root, msgpack::sbuffer& response_buffer);
