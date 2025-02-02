@@ -469,3 +469,64 @@ void get_breakpoints(msgpack::object root, msgpack::sbuffer& response_buffer) {
 
     msgpack::pack(response_buffer, bp_vec);
 }
+
+void get_label_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+    size_t sreg;
+    char text[MAX_LABEL_SIZE];
+    memset(text, 0, MAX_LABEL_SIZE);
+
+    if(root.via.array.size < 3 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER || root.via.array.ptr[2].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    root.via.array.ptr[2].convert(sreg);
+    bool res = DbgGetLabelAt(addr, (SEGMENTREG)sreg, text);
+    msgpack::pack(response_buffer, std::tuple<bool, std::string>(res, std::string(text)));
+}
+
+void get_comment_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+    char text[MAX_COMMENT_SIZE];
+    memset(text, 0, MAX_COMMENT_SIZE);
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    bool res = DbgGetCommentAt(addr, text);
+    msgpack::pack(response_buffer, std::tuple<bool, std::string>(res, std::string(text)));
+}
+
+void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+    SYMBOLINFO* info = (SYMBOLINFO*)BridgeAlloc(sizeof(SYMBOLINFO));
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, false);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    bool res = DbgGetSymbolInfoAt(addr, info);
+    msgpack::pack(response_buffer, std::tuple<bool, size_t, std::string, std::string, size_t, size_t>(
+        res,
+        info->addr,
+        std::string(info->decoratedSymbol),
+        std::string(info->undecoratedSymbol),
+        info->type,
+        info->ordinal
+    ));
+
+    if (info->freeDecorated) {
+        BridgeFree(info->decoratedSymbol);
+    }
+    if (info->freeUndecorated) {
+        BridgeFree(info->undecoratedSymbol);
+    }
+    BridgeFree(info);
+}

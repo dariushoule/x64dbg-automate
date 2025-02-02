@@ -78,3 +78,6 @@ typedef std::tuple<
     uint16_t, uint8_t, uint8_t, size_t, bool, bool, std::string, 
     std::string, std::string, std::string, std::string> BpxTup;
 void get_breakpoints(msgpack::object root, msgpack::sbuffer& response_buffer);
+void get_label_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+void get_comment_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer);

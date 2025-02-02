@@ -70,6 +70,12 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
             assemble_at(root, response_buffer);
         } else if (cmd == XAUTO_REQ_GET_BREAKPOINTS) {
             get_breakpoints(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_GET_LABEL) {
+            get_label_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_GET_COMMENT) {
+            get_comment_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_GET_SYMBOL) {
+            get_symbol_at(root, response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {
             msgpack::pack(response_buffer, "OK_QUITTING");
             return DISPATCH_EXIT;

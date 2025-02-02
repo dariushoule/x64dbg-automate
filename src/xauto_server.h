@@ -28,6 +28,9 @@ constexpr const char* XAUTO_REQ_DBG_IS_VALID_READ_PTR = "XAUTO_REQ_DBG_IS_VALID_
 constexpr const char* XAUTO_REQ_DISASSEMBLE = "XAUTO_REQ_DISASSEMBLE";
 constexpr const char* XAUTO_REQ_ASSEMBLE = "XAUTO_REQ_ASSEMBLE";
 constexpr const char* XAUTO_REQ_GET_BREAKPOINTS = "XAUTO_REQ_GET_BREAKPOINTS";
+constexpr const char* XAUTO_REQ_GET_LABEL = "XAUTO_REQ_GET_LABEL";
+constexpr const char* XAUTO_REQ_GET_COMMENT = "XAUTO_REQ_GET_COMMENT";
+constexpr const char* XAUTO_REQ_GET_SYMBOL = "XAUTO_REQ_GET_SYMBOL";
 
 
 #define SESS_REQ_REP_PORT 41600 + xauto_session_id
