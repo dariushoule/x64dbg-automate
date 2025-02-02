@@ -62,3 +62,7 @@ typedef std::tuple<bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, b
 typedef std::tuple<bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, uint16_t> x87StatusWordFieldsTup;
 typedef std::tuple<bool, bool, bool, bool, bool, bool, bool, bool, uint16_t, uint16_t> x87ControlWordFieldsTup;
 void dbg_read_regs(msgpack::sbuffer& response_buffer);
+void dbg_read_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffer);
+void dbg_write_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffer);
+void dbg_read_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer);
+void dbg_write_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer);

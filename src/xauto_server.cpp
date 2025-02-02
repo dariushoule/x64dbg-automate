@@ -54,6 +54,14 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
             dbg_write_memory(root, response_buffer);
         } else if (cmd == XAUTO_REQ_DBG_READ_REGISTERS) {
             dbg_read_regs(response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_READ_SETTING_SZ) {
+            dbg_read_setting_sz(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_WRITE_SETTING_SZ) {
+            dbg_write_setting_sz(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_READ_SETTING_UINT) {
+            dbg_read_setting_uint(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_WRITE_SETTING_UINT) {
+            dbg_write_setting_uint(root, response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {
             msgpack::pack(response_buffer, "OK_QUITTING");
             return DISPATCH_EXIT;

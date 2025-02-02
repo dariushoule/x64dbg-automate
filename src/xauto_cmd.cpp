@@ -275,3 +275,86 @@ void dbg_read_regs(msgpack::sbuffer& response_buffer) {
 
     msgpack::pack(response_buffer, regdump);
 }
+
+void dbg_read_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string section;
+    std::string setting_name;
+
+    if(root.via.array.size < 3 || root.via.array.ptr[1].type != msgpack::type::STR || root.via.array.ptr[2].type != msgpack::type::STR) {
+        XAutoErrorResponse resp_obj = {"XERROR_BAD_SETTING", "Invalid or missing setting string"};
+        msgpack::pack(response_buffer, resp_obj);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(section);
+    root.via.array.ptr[2].convert(setting_name);
+
+    char* setting_val = (char*)BridgeAlloc(MAX_SETTING_SIZE);
+    bool res = BridgeSettingGet(section.c_str(), setting_name.c_str(), setting_val);
+    msgpack::pack(response_buffer, std::tuple<bool, std::string>(res, std::string(setting_val)));
+    BridgeFree(setting_val);
+}
+
+void dbg_write_setting_sz(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string section;
+    std::string setting_name;
+    std::string setting_val;
+
+    if( root.via.array.size < 3 || 
+        root.via.array.ptr[1].type != msgpack::type::STR || 
+        root.via.array.ptr[2].type != msgpack::type::STR || 
+        root.via.array.ptr[3].type != msgpack::type::STR
+    ) {
+        XAutoErrorResponse resp_obj = {"XERROR_BAD_SETTING", "Invalid or missing setting string"};
+        msgpack::pack(response_buffer, resp_obj);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(section);
+    root.via.array.ptr[2].convert(setting_name);
+    root.via.array.ptr[3].convert(setting_val);
+
+    bool res = BridgeSettingSet(section.c_str(), setting_name.c_str(), setting_val.c_str());
+    msgpack::pack(response_buffer, res);
+}
+
+void dbg_read_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string section;
+    std::string setting_name;
+
+    if(root.via.array.size < 3 || root.via.array.ptr[1].type != msgpack::type::STR || root.via.array.ptr[2].type != msgpack::type::STR) {
+        XAutoErrorResponse resp_obj = {"XERROR_BAD_SETTING", "Invalid or missing setting string"};
+        msgpack::pack(response_buffer, resp_obj);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(section);
+    root.via.array.ptr[2].convert(setting_name);
+
+    size_t setting_val;
+    bool res = BridgeSettingGetUint(section.c_str(), setting_name.c_str(), &setting_val);
+    msgpack::pack(response_buffer, std::tuple<bool, size_t>(res, setting_val));
+}
+
+void dbg_write_setting_uint(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string section;
+    std::string setting_name;
+    size_t setting_val;
+
+    if( root.via.array.size < 3 || 
+        root.via.array.ptr[1].type != msgpack::type::STR || 
+        root.via.array.ptr[2].type != msgpack::type::STR || 
+        (root.via.array.ptr[3].type != msgpack::type::POSITIVE_INTEGER)
+    ) {
+        XAutoErrorResponse resp_obj = {"XERROR_BAD_SETTING", "Invalid or missing setting string"};
+        msgpack::pack(response_buffer, resp_obj);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(section);
+    root.via.array.ptr[2].convert(setting_name);
+    root.via.array.ptr[3].convert(setting_val);
+
+    bool res = BridgeSettingSetUint(section.c_str(), setting_name.c_str(), setting_val);
+    msgpack::pack(response_buffer, res);
+}
