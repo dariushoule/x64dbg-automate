@@ -142,10 +142,18 @@ void dbg_read_regs(msgpack::sbuffer& response_buffer) {
 
     std::array<uint8_t, 80> reg_area;
     std::copy_n((uint8_t*)&rd.regcontext.RegisterArea[0], 80, reg_area.begin()); 
+
+    #ifdef _WIN64
     std::array<uint8_t, 16 * 16> xmm_regs;
     std::copy_n((uint8_t*)&rd.regcontext.XmmRegisters[0], 16 * 16, xmm_regs.begin()); 
     std::array<uint8_t, 16 * 32> ymm_regs;
     std::copy_n((uint8_t*)&rd.regcontext.YmmRegisters[0], 16 * 32, ymm_regs.begin()); 
+    #else
+    std::array<uint8_t, 8 * 16> xmm_regs;
+    std::copy_n((uint8_t*)&rd.regcontext.XmmRegisters[0], 8 * 16, xmm_regs.begin());
+    std::array<uint8_t, 8 * 32> ymm_regs;
+    std::copy_n((uint8_t*)&rd.regcontext.YmmRegisters[0], 8 * 32, ymm_regs.begin());
+    #endif
 
     FpuRegsArr fpu_regs;
     for (size_t i = 0; i < 8; i++) {
@@ -220,7 +228,7 @@ void dbg_read_regs(msgpack::sbuffer& response_buffer) {
     #else
     std::tuple<
         size_t, 
-        CtxTup64, 
+        CtxTup32, 
         FlagsTup, 
         FpuRegsArr, 
         MmxArr,
@@ -331,7 +339,7 @@ void dbg_read_setting_uint(msgpack::object root, msgpack::sbuffer& response_buff
     root.via.array.ptr[1].convert(section);
     root.via.array.ptr[2].convert(setting_name);
 
-    size_t setting_val;
+    duint setting_val;
     bool res = BridgeSettingGetUint(section.c_str(), setting_name.c_str(), &setting_val);
     msgpack::pack(response_buffer, std::tuple<bool, size_t>(res, setting_val));
 }
