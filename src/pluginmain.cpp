@@ -12,12 +12,12 @@ int hMenuMemmap;
 int hMenuSymmod;
 
 
-XAuto::XAutoServer* srv;
+XAutoServer* srv;
 
 
 PLUG_EXPORT bool pluginit(PLUG_INITSTRUCT* initStruct)
 {
-    srv = new XAuto::XAutoServer();
+    srv = new XAutoServer();
     initStruct->pluginVersion = PLUGIN_VERSION;
     initStruct->sdkVersion = PLUG_SDKVERSION;
     strncpy_s(initStruct->pluginName, PLUGIN_NAME, _TRUNCATE);

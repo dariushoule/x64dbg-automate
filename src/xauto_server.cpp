@@ -12,7 +12,7 @@ constexpr int DISPATCH_CONTINUE = 0;
 constexpr int DISPATCH_EXIT = -1;
 
 
-int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer) {
+int XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer) {
     if (root.type == msgpack::type::STR) {
         std::string str;
         root.convert(str);
@@ -22,11 +22,7 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
     } else if (root.type == msgpack::type::ARRAY && root.via.array.size > 0 && root.via.array.ptr[0].type == msgpack::type::STR) {
         std::string cmd;
         root.via.array.ptr[0].convert(cmd);
-        // dprintf("Received command: %s\n", cmd.c_str());
-        if (cmd == XAUTO_REQ_DBG_EVENT) {
-            // msgpack::pack(response_buffer, "EVENT");
-            // TODO subscribe to plugin events and yield them?
-        } else if (cmd == XAUTO_REQ_DEBUGGER_PID) {
+        if (cmd == XAUTO_REQ_DEBUGGER_PID) {
             get_debugger_pid(response_buffer);
         } else if (cmd == XAUTO_REQ_COMPAT_VERSION) {
             get_compat_v(response_buffer);
@@ -86,7 +82,7 @@ int XAuto::XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& re
 }
 
 
-void XAuto::XAutoServer::xauto_srv_req_rep_thread() {
+void XAutoServer::xauto_srv_req_rep_thread() {
     zmq::socket_t socket{context, zmq::socket_type::rep};
     socket.bind(("tcp://localhost:" + std::to_string(SESS_REQ_REP_PORT)).c_str());
     dprintf("Allocated REQ/REP port: %d\n", SESS_REQ_REP_PORT);
@@ -128,7 +124,7 @@ void XAuto::XAutoServer::xauto_srv_req_rep_thread() {
     }
 }
 
-void XAuto::XAutoServer::acquire_session() {
+void XAutoServer::acquire_session() {
     HANDLE hMutex;
     do {
         xauto_session_id++;
@@ -137,7 +133,7 @@ void XAuto::XAutoServer::acquire_session() {
     dprintf("Allocated session id: %d\n", xauto_session_id);
 }
 
-XAuto::XAutoServer::XAutoServer() {
+XAutoServer::XAutoServer() {
     context = zmq::context_t(1);
     acquire_session();
 

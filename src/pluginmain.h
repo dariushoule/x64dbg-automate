@@ -68,4 +68,4 @@ extern int hMenuMemmap;
 extern int hMenuSymmod;
 
 // Server instance
-extern XAuto::XAutoServer* srv;
+extern XAutoServer* srv;

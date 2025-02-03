@@ -7,7 +7,6 @@
 constexpr const char* XAUTO_REQ_DEBUGGER_PID = "XAUTO_REQ_DEBUGGER_PID";
 constexpr const char* XAUTO_REQ_COMPAT_VERSION = "XAUTO_REQ_COMPAT_VERSION";
 constexpr const char* XAUTO_REQ_DEBUGGER_VERSION = "XAUTO_REQ_DEBUGGER_VERSION";
-constexpr const char* XAUTO_REQ_DBG_EVENT = "XAUTO_REQ_DBG_EVENT";
 constexpr const char* XAUTO_REQ_QUIT = "XAUTO_REQ_QUIT";
 constexpr const char* XAUTO_REQ_DBG_EVAL = "XAUTO_REQ_DBG_EVAL";
 constexpr const char* XAUTO_REQ_DBG_CMD_EXEC_DIRECT = "XAUTO_REQ_DBG_CMD_EXEC_DIRECT";
@@ -37,18 +36,16 @@ constexpr const char* XAUTO_REQ_GET_SYMBOL = "XAUTO_REQ_GET_SYMBOL";
 #define SESS_PUB_SUB_PORT 51600 + xauto_session_id
 
 
-namespace XAuto {
-    class XAutoServer {
-        public:
-        XAutoServer();
-        zmq::socket_t pub_sock;
+class XAutoServer {
+    public:
+    XAutoServer();
+    zmq::socket_t pub_sock;
 
-        private:
-        uint16_t xauto_session_id = 0;
-        zmq::context_t context;
+    private:
+    uint16_t xauto_session_id = 0;
+    zmq::context_t context;
 
-        void xauto_srv_req_rep_thread();
-        void acquire_session();
-        int _dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer);
-    };
-}
+    void xauto_srv_req_rep_thread();
+    void acquire_session();
+    int _dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer);
+};
