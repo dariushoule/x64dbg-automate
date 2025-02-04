@@ -49,6 +49,7 @@
 #pragma comment(lib, "pluginsdk/TitanEngine/TitanEngine_x86.lib")
 #pragma comment(lib, "pluginsdk/XEDParse/XEDParse_x86.lib")
 #endif //_WIN64
+#pragma comment(lib, "shlwapi.lib")
 
 #define Cmd(x) DbgCmdExecDirect(x)
 #define Eval(x) DbgValFromString(x)

@@ -1,6 +1,8 @@
 #include "xauto_cmd.h"
 #include <pluginsdk/bridgemain.h>
-#include <pluginsdk/_plugins.h>
+#include "pluginmain.h"
+#include <TlHelp32.h>
+#include <Shlwapi.h>
 
 
 void get_debugger_pid(msgpack::sbuffer& response_buffer) {
@@ -537,4 +539,14 @@ void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
         BridgeFree(info->undecoratedSymbol);
     }
     BridgeFree(info);
+}
+
+std::wstring get_session_filename(size_t session_pid) {
+    wchar_t temp_path[MAX_PATH * 4];
+    if (GetTempPathW(MAX_PATH * 2, temp_path) == 0) {
+        dprintf("Failed to get temp path\n");
+        wcscpy(temp_path, L"c:\\windows\\temp\\");
+    }
+
+    return std::wstring(temp_path) + L"xauto_session." + std::to_wstring(session_pid) + L".lock";
 }

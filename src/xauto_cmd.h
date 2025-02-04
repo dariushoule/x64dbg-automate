@@ -81,3 +81,4 @@ void get_breakpoints(msgpack::object root, msgpack::sbuffer& response_buffer);
 void get_label_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void get_comment_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+std::wstring get_session_filename(size_t session_pid);

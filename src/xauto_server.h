@@ -31,22 +31,21 @@ constexpr const char* XAUTO_REQ_GET_LABEL = "XAUTO_REQ_GET_LABEL";
 constexpr const char* XAUTO_REQ_GET_COMMENT = "XAUTO_REQ_GET_COMMENT";
 constexpr const char* XAUTO_REQ_GET_SYMBOL = "XAUTO_REQ_GET_SYMBOL";
 
-
-#define SESS_REQ_REP_PORT 41600 + xauto_session_id
-#define SESS_PUB_SUB_PORT 51600 + xauto_session_id
-
-
 class XAutoServer {
     public:
-    XAutoServer();
     zmq::socket_t pub_sock;
-    HANDLE hMutex;
+    zmq::socket_t rep_socket;
+    uint16_t sess_req_rep_port = 0;
+    uint16_t sess_pub_sub_port = 0;
+
+    XAutoServer();
+    void release_session();
 
     private:
-    uint16_t xauto_session_id = 0;
+    uint16_t session_pid = 0;
     zmq::context_t context;
 
     void xauto_srv_req_rep_thread();
-    void acquire_session();
+    bool acquire_session();
     int _dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_buffer);
 };

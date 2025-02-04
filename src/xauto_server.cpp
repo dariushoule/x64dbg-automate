@@ -3,6 +3,8 @@
 #include "xauto_cmd.h"
 
 #include <thread>
+#include <fstream>
+#include <random>
 
 
 using namespace msgpack;
@@ -83,17 +85,13 @@ int XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_
 
 
 void XAutoServer::xauto_srv_req_rep_thread() {
-    zmq::socket_t socket{context, zmq::socket_type::rep};
-    socket.bind(("tcp://localhost:" + std::to_string(SESS_REQ_REP_PORT)).c_str());
-    dprintf("Allocated REQ/REP port: %d\n", SESS_REQ_REP_PORT);
-
     try {
         for (;;) 
         {
             zmq::message_t request;
             msgpack::sbuffer outbuf;
 
-            auto res = socket.recv(request, zmq::recv_flags::none);
+            auto res = rep_socket.recv(request, zmq::recv_flags::none);
             if (!res.has_value()) {
                 dprintf("zmq error, failed to recv message: %s (0x%X)\n", zmq_strerror(zmq_errno()), zmq_errno());
                 continue;
@@ -109,10 +107,10 @@ void XAutoServer::xauto_srv_req_rep_thread() {
                 msgpack::pack(outbuf, err_resp_obj);
             }
 
-            socket.send(zmq::buffer(outbuf.data(), outbuf.size()), zmq::send_flags::none);
+            rep_socket.send(zmq::buffer(outbuf.data(), outbuf.size()), zmq::send_flags::none);
 
             if (dispatch_exit == DISPATCH_EXIT) {
-                socket.close();
+                rep_socket.close();
                 break;
             }
         }
@@ -124,33 +122,71 @@ void XAutoServer::xauto_srv_req_rep_thread() {
     }
 }
 
-void XAutoServer::acquire_session() {
-    hMutex = INVALID_HANDLE_VALUE;
 
-    while (hMutex == INVALID_HANDLE_VALUE) {
-        xauto_session_id++;
-        const char* mutex_name = ("x64dbg_automate_mutex_s_" + std::to_string(xauto_session_id)).c_str();
+bool XAutoServer::acquire_session() {
+    session_pid = GetCurrentProcessId();
 
-        HANDLE hTryMutex = OpenMutexA(SYNCHRONIZE, FALSE, mutex_name);
-        if (hTryMutex != NULL) {
-            // CloseHandle(hTryMutex);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(0xc000, 0xFFFF);
+
+    rep_socket = zmq::socket_t(context, zmq::socket_type::rep);
+    while(true) {
+        try {
+            sess_req_rep_port = distrib(gen);
+            rep_socket.bind(("tcp://localhost:" + std::to_string(sess_req_rep_port)).c_str());
+            break;
+        } catch (const zmq::error_t& e) {
+            dprintf("Failed to bind REQ/REP socket, retrying: %s\n", e.what());
             continue;
         }
-
-        hMutex = CreateMutexA(NULL, TRUE, mutex_name);
     }
-    dprintf("Allocated session id: %d\n", xauto_session_id);
+    dprintf("Allocated REQ/REP port: %d\n", sess_req_rep_port);
+
+    pub_sock = zmq::socket_t(context, zmq::socket_type::pub);
+    while(true) {
+        try {
+            sess_pub_sub_port = distrib(gen);
+            pub_sock.bind(("tcp://localhost:" + std::to_string(sess_pub_sub_port)).c_str());
+            break;
+        } catch (const zmq::error_t& e) {
+            dprintf("Failed to bind PUB/SUB socket, retrying: %s\n", e.what());
+            continue;
+        }
+    }
+    dprintf("Allocated PUB/SUB port: %d\n", sess_pub_sub_port);
+
+    std::wstring session_file = get_session_filename(session_pid);
+    std::ofstream session_out(session_file);
+    if (!session_out.is_open()) {
+        dprintf("Failed to open session file: %s\n", session_file.c_str());
+        return false;
+    }
+    session_out << sess_req_rep_port << std::endl << sess_pub_sub_port << std::endl;
+    session_out.close();
+
+    dprintf("Allocated session ID: %d\n", session_pid);
+    return true;
 }
+
+
+void XAutoServer::release_session() {
+    auto sess_filename = get_session_filename(session_pid);
+    if (_wremove(sess_filename.c_str()) != 0) {
+        dprintf("Failed to release session file: %s\n", sess_filename.c_str());
+        return;
+    } else {
+        dprintf("Culled session ID: %d\n", session_pid);
+    }
+}
+
 
 XAutoServer::XAutoServer() {
     context = zmq::context_t(1);
-    acquire_session();
+    if(!acquire_session()){
+        dprintf("Failed to acquire session, plugin execution cannot continue\n");
+        return;
+    }
 
-    // Request-Reply Sock
     std::thread(std::bind(&XAutoServer::xauto_srv_req_rep_thread, this)).detach();
-
-    // Pub-Sub Sock
-    pub_sock = zmq::socket_t(context, zmq::socket_type::pub);
-    pub_sock.bind(("tcp://localhost:" + std::to_string(SESS_PUB_SUB_PORT)).c_str());
-    dprintf("Allocated PUB/SUB port: %d\n", SESS_PUB_SUB_PORT);
 }
