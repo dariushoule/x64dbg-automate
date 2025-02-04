@@ -125,11 +125,20 @@ void XAutoServer::xauto_srv_req_rep_thread() {
 }
 
 void XAutoServer::acquire_session() {
-    HANDLE hMutex;
-    do {
+    hMutex = INVALID_HANDLE_VALUE;
+
+    while (hMutex == INVALID_HANDLE_VALUE) {
         xauto_session_id++;
-        hMutex = CreateMutexA(NULL, TRUE, ("x64dbg_automate_mutex_s_" + std::to_string(xauto_session_id)).c_str());
-    } while (GetLastError() == ERROR_ALREADY_EXISTS);
+        const char* mutex_name = ("x64dbg_automate_mutex_s_" + std::to_string(xauto_session_id)).c_str();
+
+        HANDLE hTryMutex = OpenMutexA(SYNCHRONIZE, FALSE, mutex_name);
+        if (hTryMutex != NULL) {
+            // CloseHandle(hTryMutex);
+            continue;
+        }
+
+        hMutex = CreateMutexA(NULL, TRUE, mutex_name);
+    }
     dprintf("Allocated session id: %d\n", xauto_session_id);
 }
 

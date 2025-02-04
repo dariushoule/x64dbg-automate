@@ -40,6 +40,7 @@ class XAutoServer {
     public:
     XAutoServer();
     zmq::socket_t pub_sock;
+    HANDLE hMutex;
 
     private:
     uint16_t xauto_session_id = 0;

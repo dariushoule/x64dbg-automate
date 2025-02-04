@@ -152,6 +152,9 @@ bool pluginInit(PLUG_INITSTRUCT* initStruct)
 void pluginStop()
 {
     dprintf("pluginStop(pluginHandle: %d)\n", pluginHandle);
+    if (srv->hMutex != INVALID_HANDLE_VALUE) {
+        CloseHandle(srv->hMutex);
+    }
 }
 
 void pluginSetup()
