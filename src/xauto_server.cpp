@@ -110,7 +110,6 @@ void XAutoServer::xauto_srv_req_rep_thread() {
             rep_socket.send(zmq::buffer(outbuf.data(), outbuf.size()), zmq::send_flags::none);
 
             if (dispatch_exit == DISPATCH_EXIT) {
-                rep_socket.close();
                 break;
             }
         }
@@ -143,11 +142,11 @@ bool XAutoServer::acquire_session() {
     }
     dprintf("Allocated REQ/REP port: %d\n", sess_req_rep_port);
 
-    pub_sock = zmq::socket_t(context, zmq::socket_type::pub);
+    pub_socket = zmq::socket_t(context, zmq::socket_type::pub);
     while(true) {
         try {
             sess_pub_sub_port = distrib(gen);
-            pub_sock.bind(("tcp://localhost:" + std::to_string(sess_pub_sub_port)).c_str());
+            pub_socket.bind(("tcp://localhost:" + std::to_string(sess_pub_sub_port)).c_str());
             break;
         } catch (const zmq::error_t& e) {
             dprintf("Failed to bind PUB/SUB socket, retrying: %s\n", e.what());
@@ -171,6 +170,9 @@ bool XAutoServer::acquire_session() {
 
 
 void XAutoServer::release_session() {
+    rep_socket.close();
+    pub_socket.close();
+
     auto sess_filename = get_session_filename(session_pid);
     if (_wremove(sess_filename.c_str()) != 0) {
         dprintf("Failed to release session file: %s\n", sess_filename.c_str());

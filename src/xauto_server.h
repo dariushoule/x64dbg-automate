@@ -33,7 +33,7 @@ constexpr const char* XAUTO_REQ_GET_SYMBOL = "XAUTO_REQ_GET_SYMBOL";
 
 class XAutoServer {
     public:
-    zmq::socket_t pub_sock;
+    zmq::socket_t pub_socket;
     zmq::socket_t rep_socket;
     uint16_t sess_req_rep_port = 0;
     uint16_t sess_pub_sub_port = 0;
@@ -42,7 +42,7 @@ class XAutoServer {
     void release_session();
 
     private:
-    uint16_t session_pid = 0;
+    size_t session_pid = 0;
     zmq::context_t context;
 
     void xauto_srv_req_rep_thread();
