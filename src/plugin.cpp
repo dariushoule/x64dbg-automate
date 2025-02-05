@@ -21,6 +21,7 @@ void cb_breakpoint(CBTYPE cbType, void* callbackInfo)
     msgpack::pack(outbuf, std::tuple<
         std::string, 
         size_t, 
+        size_t, 
         bool, 
         bool, 
         bool,
@@ -40,6 +41,7 @@ void cb_breakpoint(CBTYPE cbType, void* callbackInfo)
     >(
         std::string("EVENT_BREAKPOINT"),
         bp->breakpoint->type,
+        bp->breakpoint->addr,
         bp->breakpoint->enabled,
         bp->breakpoint->singleshoot,
         bp->breakpoint->active,
