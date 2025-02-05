@@ -6,9 +6,9 @@ The RPC Server is built on [ZeroMQ](https://zeromq.org/) and supports concurrent
 
 ## Documentation
 
-Full project documentation is published on: TODO
+Full project documentation is published on: [https://dariushoule.github.io/x64dbg-automate-pyclient/](https://dariushoule.github.io/x64dbg-automate-pyclient/)
 
-See: [Installation](todo) and [Quickstart](todo)
+See: [Installation](https://dariushoule.github.io/x64dbg-automate-pyclient/installation/) and [Quickstart](https://dariushoule.github.io/x64dbg-automate-pyclient/quickstart/)
 
 🔔 _All examples and sample code assume x64dbg is configured to stop on entry and system breakpoints, skipping TLS breakpoints._
 
