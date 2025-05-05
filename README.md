@@ -2,7 +2,7 @@
 
 This repository contains the source code for the RPC server of x64dbg Automate. It is used by the x64dbg Automate [Python Client](https://github.com/dariushoule/x64dbg-automate-pyclient) to broker IPC between x64dbg and client automation software.
 
-The RPC Server is built on [ZeroMQ](https://zeromq.org/) and supports concurrent debug control and event notification. Message seriailization is performed using [messagepack](https://msgpack.org/index.html).
+The RPC Server is built on [ZeroMQ](https://zeromq.org/) and supports concurrent debug control and event notification. Message serialization is performed using [messagepack](https://msgpack.org/index.html).
 
 ## Documentation
 
