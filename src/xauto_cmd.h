@@ -3,7 +3,7 @@
 #include <cstdint>
 
 
-constexpr const char* XAUTO_COMPAT_VERSION = "bitter_oyster"; // TODO: externalize
+constexpr const char* XAUTO_COMPAT_VERSION = "pingpong_bat"; // TODO: externalize
 
 
 class XAutoErrorResponse {
@@ -40,8 +40,7 @@ typedef std::tuple<
     std::array<uint8_t, 80>,
     x87fpuTup,
     uint32_t,
-    std::array<uint8_t, 16 * 16>,
-    std::array<uint8_t, 16 * 32>
+    std::array<uint8_t, 64 * 32>
 > CtxTup64;
 typedef std::tuple<
     size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t, // gp regs
@@ -51,8 +50,7 @@ typedef std::tuple<
     std::array<uint8_t, 80>,
     x87fpuTup,
     uint32_t,
-    std::array<uint8_t, 8 * 16>,
-    std::array<uint8_t, 8 * 32>
+    std::array<uint8_t, 64 * 8>
 > CtxTup32;
 typedef std::tuple<bool, bool, bool, bool, bool, bool, bool, bool, bool> FlagsTup;
 typedef std::tuple<std::array<uint8_t, 10>, size_t, size_t> FpuRegsTup;

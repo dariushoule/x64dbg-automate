@@ -1,12 +1,25 @@
 
 if(NOT TARGET x64dbg)
-    file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS ${x64dbg_SOURCE_DIR}/pluginsdk/*.h)
+    file(GLOB_RECURSE HEADERS ${x64dbg_SOURCE_DIR}/pluginsdk/*.h)
     add_custom_target(x64dbg-sdk SOURCES ${HEADERS})
     source_group(TREE ${x64dbg_SOURCE_DIR} FILES ${HEADERS})
 
     add_library(x64dbg INTERFACE)
     target_include_directories(x64dbg INTERFACE ${x64dbg_SOURCE_DIR})
-    target_link_directories(x64dbg INTERFACE ${x64dbg_SOURCE_DIR})
+    target_link_directories(x64dbg INTERFACE ${x64dbg_SOURCE_DIR}/pluginsdk)
+    
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        file(GLOB_RECURSE LIBS
+            ${x64dbg_SOURCE_DIR}/pluginsdk/*_x64.lib
+            ${x64dbg_SOURCE_DIR}/pluginsdk/x64*.lib
+        )
+    else()
+        file(GLOB_RECURSE LIBS
+            ${x64dbg_SOURCE_DIR}/pluginsdk/*_x86.lib
+            ${x64dbg_SOURCE_DIR}/pluginsdk/x32*.lib
+        )
+    endif()
+    target_link_libraries(x64dbg INTERFACE ${LIBS})
 endif()
 
 function(x64dbg_plugin target)

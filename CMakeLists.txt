@@ -49,9 +49,9 @@ include(FetchContent)
 message(STATUS "Fetching x64dbg...")
 FetchContent_Declare(x64dbg
 	URL
-		"https://sourceforge.net/projects/x64dbg/files/snapshots/snapshot_2025-01-17_12-45.zip"
+		"https://sourceforge.net/projects/x64dbg/files/snapshots/snapshot_2025-07-04_16-03.zip"
 	URL_HASH
-		SHA1=57e77f9a406647b0ad31311630e3fc44f25979b3
+		SHA1=9d81b4f5a7bf24ef143791d845f86ef3b87f684c
 )
 FetchContent_MakeAvailable(x64dbg)
 

@@ -138,39 +138,188 @@ void dbg_write_memory(msgpack::object root, msgpack::sbuffer& response_buffer) {
     msgpack::pack(response_buffer, true);
 }
 
+// Carbon copy of the non-exposed methods in BridegeMain.cpp
+#define MXCSRFLAG_IE 0x1
+#define MXCSRFLAG_DE 0x2
+#define MXCSRFLAG_ZE 0x4
+#define MXCSRFLAG_OE 0x8
+#define MXCSRFLAG_UE 0x10
+#define MXCSRFLAG_PE 0x20
+#define MXCSRFLAG_DAZ 0x40
+#define MXCSRFLAG_IM 0x80
+#define MXCSRFLAG_DM 0x100
+#define MXCSRFLAG_ZM 0x200
+#define MXCSRFLAG_OM 0x400
+#define MXCSRFLAG_UM 0x800
+#define MXCSRFLAG_PM 0x1000
+#define MXCSRFLAG_FZ 0x8000
+
+static void GetMxCsrFields(MXCSRFIELDS* MxCsrFields, DWORD MxCsr)
+{
+    MxCsrFields->IE = ((MxCsr & MXCSRFLAG_IE) != 0);
+    MxCsrFields->DE = ((MxCsr & MXCSRFLAG_DE) != 0);
+    MxCsrFields->ZE = ((MxCsr & MXCSRFLAG_ZE) != 0);
+    MxCsrFields->OE = ((MxCsr & MXCSRFLAG_OE) != 0);
+    MxCsrFields->UE = ((MxCsr & MXCSRFLAG_UE) != 0);
+    MxCsrFields->PE = ((MxCsr & MXCSRFLAG_PE) != 0);
+    MxCsrFields->DAZ = ((MxCsr & MXCSRFLAG_DAZ) != 0);
+    MxCsrFields->IM = ((MxCsr & MXCSRFLAG_IM) != 0);
+    MxCsrFields->DM = ((MxCsr & MXCSRFLAG_DM) != 0);
+    MxCsrFields->ZM = ((MxCsr & MXCSRFLAG_ZM) != 0);
+    MxCsrFields->OM = ((MxCsr & MXCSRFLAG_OM) != 0);
+    MxCsrFields->UM = ((MxCsr & MXCSRFLAG_UM) != 0);
+    MxCsrFields->PM = ((MxCsr & MXCSRFLAG_PM) != 0);
+    MxCsrFields->FZ = ((MxCsr & MXCSRFLAG_FZ) != 0);
+
+    MxCsrFields->RC = (MxCsr & 0x6000) >> 13;
+}
+
+#define x87CONTROLWORD_FLAG_IM 0x1
+#define x87CONTROLWORD_FLAG_DM 0x2
+#define x87CONTROLWORD_FLAG_ZM 0x4
+#define x87CONTROLWORD_FLAG_OM 0x8
+#define x87CONTROLWORD_FLAG_UM 0x10
+#define x87CONTROLWORD_FLAG_PM 0x20
+#define x87CONTROLWORD_FLAG_IEM 0x80
+#define x87CONTROLWORD_FLAG_IC 0x1000
+
+static void Getx87ControlWordFields(X87CONTROLWORDFIELDS* x87ControlWordFields, WORD ControlWord)
+{
+    x87ControlWordFields->IM = ((ControlWord & x87CONTROLWORD_FLAG_IM) != 0);
+    x87ControlWordFields->DM = ((ControlWord & x87CONTROLWORD_FLAG_DM) != 0);
+    x87ControlWordFields->ZM = ((ControlWord & x87CONTROLWORD_FLAG_ZM) != 0);
+    x87ControlWordFields->OM = ((ControlWord & x87CONTROLWORD_FLAG_OM) != 0);
+    x87ControlWordFields->UM = ((ControlWord & x87CONTROLWORD_FLAG_UM) != 0);
+    x87ControlWordFields->PM = ((ControlWord & x87CONTROLWORD_FLAG_PM) != 0);
+    x87ControlWordFields->IEM = ((ControlWord & x87CONTROLWORD_FLAG_IEM) != 0);
+    x87ControlWordFields->IC = ((ControlWord & x87CONTROLWORD_FLAG_IC) != 0);
+
+    x87ControlWordFields->RC = ((ControlWord & 0xC00) >> 10);
+    x87ControlWordFields->PC = ((ControlWord & 0x300) >> 8);
+}
+
+#define x87STATUSWORD_FLAG_I 0x1
+#define x87STATUSWORD_FLAG_D 0x2
+#define x87STATUSWORD_FLAG_Z 0x4
+#define x87STATUSWORD_FLAG_O 0x8
+#define x87STATUSWORD_FLAG_U 0x10
+#define x87STATUSWORD_FLAG_P 0x20
+#define x87STATUSWORD_FLAG_SF 0x40
+#define x87STATUSWORD_FLAG_ES 0x80
+#define x87STATUSWORD_FLAG_C0 0x100
+#define x87STATUSWORD_FLAG_C1 0x200
+#define x87STATUSWORD_FLAG_C2 0x400
+#define x87STATUSWORD_FLAG_C3 0x4000
+#define x87STATUSWORD_FLAG_B 0x8000
+
+static void Getx87StatusWordFields(X87STATUSWORDFIELDS* x87StatusWordFields, WORD StatusWord)
+{
+    x87StatusWordFields->I = ((StatusWord & x87STATUSWORD_FLAG_I) != 0);
+    x87StatusWordFields->D = ((StatusWord & x87STATUSWORD_FLAG_D) != 0);
+    x87StatusWordFields->Z = ((StatusWord & x87STATUSWORD_FLAG_Z) != 0);
+    x87StatusWordFields->O = ((StatusWord & x87STATUSWORD_FLAG_O) != 0);
+    x87StatusWordFields->U = ((StatusWord & x87STATUSWORD_FLAG_U) != 0);
+    x87StatusWordFields->P = ((StatusWord & x87STATUSWORD_FLAG_P) != 0);
+    x87StatusWordFields->SF = ((StatusWord & x87STATUSWORD_FLAG_SF) != 0);
+    x87StatusWordFields->ES = ((StatusWord & x87STATUSWORD_FLAG_ES) != 0);
+    x87StatusWordFields->C0 = ((StatusWord & x87STATUSWORD_FLAG_C0) != 0);
+    x87StatusWordFields->C1 = ((StatusWord & x87STATUSWORD_FLAG_C1) != 0);
+    x87StatusWordFields->C2 = ((StatusWord & x87STATUSWORD_FLAG_C2) != 0);
+    x87StatusWordFields->C3 = ((StatusWord & x87STATUSWORD_FLAG_C3) != 0);
+    x87StatusWordFields->B = ((StatusWord & x87STATUSWORD_FLAG_B) != 0);
+
+    x87StatusWordFields->TOP = ((StatusWord & 0x3800) >> 11);
+}
+
+// Definitions From TitanEngine
+#define Getx87r0PositionInRegisterArea(STInTopStack) ((8 - STInTopStack) % 8)
+#define Calculatex87registerPositionInRegisterArea(x87r0_position, index) (((x87r0_position + index) % 8))
+#define GetRegisterAreaOf87register(register_area, x87r0_position, index) (((char *) register_area) + 10 * Calculatex87registerPositionInRegisterArea(x87r0_position, index) )
+#define GetSTValueFromIndex(x87r0_position, index) ((x87r0_position + index) % 8)
+
+
 void dbg_read_regs(msgpack::sbuffer& response_buffer) {
-    REGDUMP rd;
+    REGDUMP_AVX512 rd;
+
+    // Calculated
+    FLAGS flags;
+    memset(&flags, 0, sizeof(flags));
+    X87FPUREGISTER x87FPURegisters[8];
+    memset(x87FPURegisters, 0, sizeof(x87FPURegisters));
+    unsigned long long mmx[8];
+    memset(mmx, 0, sizeof(mmx));
+    MXCSRFIELDS MxCsrFields;
+    memset(&MxCsrFields, 0, sizeof(MxCsrFields));
+    X87STATUSWORDFIELDS x87StatusWordFields;
+    memset(&x87StatusWordFields, 0, sizeof(x87StatusWordFields));
+    X87CONTROLWORDFIELDS x87ControlWordFields;
+    memset(&x87ControlWordFields, 0, sizeof(x87ControlWordFields));
+    LASTERROR lastError;
+    memset(&lastError, 0, sizeof(lastError));
+    LASTSTATUS lastStatus;
+    memset(&lastStatus, 0, sizeof(lastStatus));
+
     DbgGetRegDumpEx(&rd, sizeof(rd));
+    GetMxCsrFields(&MxCsrFields, rd.regcontext.MxCsr);
+    Getx87ControlWordFields(&x87ControlWordFields, rd.regcontext.x87fpu.ControlWord);
+    Getx87StatusWordFields(&x87StatusWordFields, rd.regcontext.x87fpu.StatusWord);
+
+    DWORD x87r0_position = Getx87r0PositionInRegisterArea(x87StatusWordFields.TOP);
+    for(int i = 0; i < 8; i++)
+    {
+        memcpy(x87FPURegisters[i].data, GetRegisterAreaOf87register(rd.regcontext.RegisterArea, x87r0_position, i), 10);
+        mmx[i] = *((uint64_t*)&x87FPURegisters[i].data);
+        x87FPURegisters[i].st_value = GetSTValueFromIndex(x87r0_position, i);
+        x87FPURegisters[i].tag = (int)((rd.regcontext.x87fpu.TagWord >> (i * 2)) & 0x3);
+    }
+
+    char fmtString[64] = "";
+    auto pStringFormatInline = DbgFunctions()->StringFormatInline; // When called before dbgfunctionsinit() this can be NULL!
+    lastError.code = rd.lastError;
+    if(pStringFormatInline && sprintf_s(fmtString, _TRUNCATE, "{winerrorname@%X}", lastError.code) != -1)
+    {
+        pStringFormatInline(fmtString, sizeof(lastError.name), lastError.name);
+    }
+    else
+    {
+        memset(lastError.name, 0, sizeof(lastError.name));
+    }
+
+    lastStatus.code = rd.lastStatus;
+    if(pStringFormatInline && sprintf_s(fmtString, _TRUNCATE, "{ntstatusname@%X}", lastStatus.code) != -1)
+    {
+        pStringFormatInline(fmtString, sizeof(lastStatus.name), lastStatus.name);
+    }
+    else
+    {
+        memset(lastStatus.name, 0, sizeof(lastStatus.name));
+    }
 
     std::array<uint8_t, 80> reg_area;
     std::copy_n((uint8_t*)&rd.regcontext.RegisterArea[0], 80, reg_area.begin()); 
 
     #ifdef _WIN64
-    std::array<uint8_t, 16 * 16> xmm_regs;
-    std::copy_n((uint8_t*)&rd.regcontext.XmmRegisters[0], 16 * 16, xmm_regs.begin()); 
-    std::array<uint8_t, 16 * 32> ymm_regs;
-    std::copy_n((uint8_t*)&rd.regcontext.YmmRegisters[0], 16 * 32, ymm_regs.begin()); 
+    std::array<uint8_t, 64 * 32> zmm_regs;
+    std::copy_n((uint8_t*)&rd.regcontext.ZmmRegisters[0], 64 * 32, zmm_regs.begin()); 
     #else
-    std::array<uint8_t, 8 * 16> xmm_regs;
-    std::copy_n((uint8_t*)&rd.regcontext.XmmRegisters[0], 8 * 16, xmm_regs.begin());
-    std::array<uint8_t, 8 * 32> ymm_regs;
-    std::copy_n((uint8_t*)&rd.regcontext.YmmRegisters[0], 8 * 32, ymm_regs.begin());
+    std::array<uint8_t, 64 * 8> zmm_regs;
+    std::copy_n((uint8_t*)&rd.regcontext.ZmmRegisters[0], 64 * 8, zmm_regs.begin());
     #endif
 
     FpuRegsArr fpu_regs;
     for (size_t i = 0; i < 8; i++) {
         fpu_regs[i] = FpuRegsTup(
             std::array<uint8_t, 10>(),
-            rd.x87FPURegisters[i].st_value,
-            rd.x87FPURegisters[i].tag
+            x87FPURegisters[i].st_value,
+            x87FPURegisters[i].tag
         );
-        std::copy_n((uint8_t*)&rd.x87FPURegisters[i].data[0], 10, std::get<0>(fpu_regs[i]).begin()); 
+        std::copy_n((uint8_t*)&x87FPURegisters[i].data[0], 10, std::get<0>(fpu_regs[i]).begin()); 
     }
 
-    std::array<uint8_t, 128> lastError;
-    std::copy_n((uint8_t*)&rd.lastError.name[0], 128, lastError.begin());
-    std::array<uint8_t, 128> lastStatus;
-    std::copy_n((uint8_t*)&rd.lastStatus.name[0], 128, lastStatus.begin());
+    std::array<uint8_t, 128> _lastError;
+    std::copy_n((uint8_t*)&lastError.name[0], 128, _lastError.begin());
+    std::array<uint8_t, 128> _lastStatus;
+    std::copy_n((uint8_t*)&lastStatus.name[0], 128, _lastStatus.begin());
 
     #ifdef _WIN64
     std::tuple<
@@ -205,27 +354,26 @@ void dbg_read_regs(msgpack::sbuffer& response_buffer) {
                 rd.regcontext.x87fpu.Cr0NpxState
             ),
             rd.regcontext.MxCsr,
-            xmm_regs,
-            ymm_regs
+            zmm_regs
         ),
-        FlagsTup(rd.flags.c, rd.flags.p, rd.flags.a, rd.flags.z, rd.flags.s, rd.flags.t, rd.flags.i, rd.flags.d, rd.flags.o),
+        FlagsTup(flags.c, flags.p, flags.a, flags.z, flags.s, flags.t, flags.i, flags.d, flags.o),
         fpu_regs,
-        MmxArr {rd.mmx[0], rd.mmx[1], rd.mmx[2], rd.mmx[3], rd.mmx[4], rd.mmx[5], rd.mmx[6], rd.mmx[7]},
+        MmxArr {mmx[0], mmx[1], mmx[2], mmx[3], mmx[4], mmx[5], mmx[6], mmx[7]},
         MxcsrFieldsTup(
-            rd.MxCsrFields.FZ, rd.MxCsrFields.PM, rd.MxCsrFields.UM, rd.MxCsrFields.OM,
-            rd.MxCsrFields.ZM, rd.MxCsrFields.IM, rd.MxCsrFields.DM, rd.MxCsrFields.DAZ,
-            rd.MxCsrFields.PE, rd.MxCsrFields.UE, rd.MxCsrFields.OE, rd.MxCsrFields.ZE,
-            rd.MxCsrFields.DE, rd.MxCsrFields.IE, rd.MxCsrFields.RC
+            MxCsrFields.FZ, MxCsrFields.PM, MxCsrFields.UM, MxCsrFields.OM,
+            MxCsrFields.ZM, MxCsrFields.IM, MxCsrFields.DM, MxCsrFields.DAZ,
+            MxCsrFields.PE, MxCsrFields.UE, MxCsrFields.OE, MxCsrFields.ZE,
+            MxCsrFields.DE, MxCsrFields.IE, MxCsrFields.RC
         ),
         x87StatusWordFieldsTup(
-            rd.x87StatusWordFields.B, rd.x87StatusWordFields.C3, rd.x87StatusWordFields.C2, rd.x87StatusWordFields.C1, rd.x87StatusWordFields.C0,
-            rd.x87StatusWordFields.ES, rd.x87StatusWordFields.SF, rd.x87StatusWordFields.P, rd.x87StatusWordFields.U, rd.x87StatusWordFields.O, 
-            rd.x87StatusWordFields.Z, rd.x87StatusWordFields.D, rd.x87StatusWordFields.I, rd.x87StatusWordFields.TOP),
+            x87StatusWordFields.B, x87StatusWordFields.C3, x87StatusWordFields.C2, x87StatusWordFields.C1, x87StatusWordFields.C0,
+            x87StatusWordFields.ES, x87StatusWordFields.SF, x87StatusWordFields.P, x87StatusWordFields.U, x87StatusWordFields.O, 
+            x87StatusWordFields.Z, x87StatusWordFields.D, x87StatusWordFields.I, x87StatusWordFields.TOP),
         x87ControlWordFieldsTup(
-            rd.x87ControlWordFields.IC, rd.x87ControlWordFields.IEM, rd.x87ControlWordFields.PM, rd.x87ControlWordFields.UM, rd.x87ControlWordFields.OM, 
-            rd.x87ControlWordFields.ZM, rd.x87ControlWordFields.DM, rd.x87ControlWordFields.IM, rd.x87ControlWordFields.RC, rd.x87ControlWordFields.PC),
-        std::tuple<uint32_t, std::array<uint8_t, 128>>(rd.lastError.code, lastError),
-        std::tuple<uint32_t, std::array<uint8_t, 128>>(rd.lastStatus.code, lastStatus)
+            x87ControlWordFields.IC, x87ControlWordFields.IEM, x87ControlWordFields.PM, x87ControlWordFields.UM, x87ControlWordFields.OM, 
+            x87ControlWordFields.ZM, x87ControlWordFields.DM, x87ControlWordFields.IM, x87ControlWordFields.RC, x87ControlWordFields.PC),
+        std::tuple<uint32_t, std::array<uint8_t, 128>>(lastError.code, _lastError),
+        std::tuple<uint32_t, std::array<uint8_t, 128>>(lastStatus.code, _lastStatus)
     );
     #else
     std::tuple<
@@ -259,27 +407,26 @@ void dbg_read_regs(msgpack::sbuffer& response_buffer) {
                 rd.regcontext.x87fpu.Cr0NpxState
             ),
             rd.regcontext.MxCsr,
-            xmm_regs,
-            ymm_regs
+            zmm_regs
         ),
-        FlagsTup(rd.flags.c, rd.flags.p, rd.flags.a, rd.flags.z, rd.flags.s, rd.flags.t, rd.flags.i, rd.flags.d, rd.flags.o),
+        FlagsTup(flags.c, flags.p, flags.a, flags.z, flags.s, flags.t, flags.i, flags.d, flags.o),
         fpu_regs,
-        MmxArr {rd.mmx[0], rd.mmx[1], rd.mmx[2], rd.mmx[3], rd.mmx[4], rd.mmx[5], rd.mmx[6], rd.mmx[7]},
+        MmxArr {mmx[0], mmx[1], mmx[2], mmx[3], mmx[4], mmx[5], mmx[6], mmx[7]},
         MxcsrFieldsTup(
-            rd.MxCsrFields.FZ, rd.MxCsrFields.PM, rd.MxCsrFields.UM, rd.MxCsrFields.OM,
-            rd.MxCsrFields.ZM, rd.MxCsrFields.IM, rd.MxCsrFields.DM, rd.MxCsrFields.DAZ,
-            rd.MxCsrFields.PE, rd.MxCsrFields.UE, rd.MxCsrFields.OE, rd.MxCsrFields.ZE,
-            rd.MxCsrFields.DE, rd.MxCsrFields.IE, rd.MxCsrFields.RC
+            MxCsrFields.FZ, MxCsrFields.PM, MxCsrFields.UM, MxCsrFields.OM,
+            MxCsrFields.ZM, MxCsrFields.IM, MxCsrFields.DM, MxCsrFields.DAZ,
+            MxCsrFields.PE, MxCsrFields.UE, MxCsrFields.OE, MxCsrFields.ZE,
+            MxCsrFields.DE, MxCsrFields.IE, MxCsrFields.RC
         ),
         x87StatusWordFieldsTup(
-            rd.x87StatusWordFields.B, rd.x87StatusWordFields.C3, rd.x87StatusWordFields.C2, rd.x87StatusWordFields.C1, rd.x87StatusWordFields.C0,
-            rd.x87StatusWordFields.ES, rd.x87StatusWordFields.SF, rd.x87StatusWordFields.P, rd.x87StatusWordFields.U, rd.x87StatusWordFields.O, 
-            rd.x87StatusWordFields.Z, rd.x87StatusWordFields.D, rd.x87StatusWordFields.I, rd.x87StatusWordFields.TOP),
+            x87StatusWordFields.B, x87StatusWordFields.C3, x87StatusWordFields.C2, x87StatusWordFields.C1, x87StatusWordFields.C0,
+            x87StatusWordFields.ES, x87StatusWordFields.SF, x87StatusWordFields.P, x87StatusWordFields.U, x87StatusWordFields.O, 
+            x87StatusWordFields.Z, x87StatusWordFields.D, x87StatusWordFields.I, x87StatusWordFields.TOP),
         x87ControlWordFieldsTup(
-            rd.x87ControlWordFields.IC, rd.x87ControlWordFields.IEM, rd.x87ControlWordFields.PM, rd.x87ControlWordFields.UM, rd.x87ControlWordFields.OM, 
-            rd.x87ControlWordFields.ZM, rd.x87ControlWordFields.DM, rd.x87ControlWordFields.IM, rd.x87ControlWordFields.RC, rd.x87ControlWordFields.PC),
-        std::tuple<uint32_t, std::array<uint8_t, 128>>(rd.lastError.code, lastError),
-        std::tuple<uint32_t, std::array<uint8_t, 128>>(rd.lastStatus.code, lastStatus)
+            x87ControlWordFields.IC, x87ControlWordFields.IEM, x87ControlWordFields.PM, x87ControlWordFields.UM, x87ControlWordFields.OM, 
+            x87ControlWordFields.ZM, x87ControlWordFields.DM, x87ControlWordFields.IM, x87ControlWordFields.RC, x87ControlWordFields.PC),
+        std::tuple<uint32_t, std::array<uint8_t, 128>>(lastError.code, _lastError),
+        std::tuple<uint32_t, std::array<uint8_t, 128>>(lastStatus.code, _lastStatus)
     );
     #endif
 
@@ -515,6 +662,7 @@ void get_comment_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
 void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
     size_t addr;
     SYMBOLINFO* info = (SYMBOLINFO*)BridgeAlloc(sizeof(SYMBOLINFO));
+    memset(info, 0, sizeof(SYMBOLINFO));
 
     if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
         msgpack::pack(response_buffer, false);
@@ -526,17 +674,19 @@ void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
     msgpack::pack(response_buffer, std::tuple<bool, size_t, std::string, std::string, size_t, size_t>(
         res,
         info->addr,
-        std::string(info->decoratedSymbol),
-        std::string(info->undecoratedSymbol),
+        info->decoratedSymbol ? std::string(info->decoratedSymbol) : std::string(),
+        info->undecoratedSymbol ? std::string(info->undecoratedSymbol) : std::string(),
         info->type,
         info->ordinal
     ));
 
-    if (info->freeDecorated) {
-        BridgeFree(info->decoratedSymbol);
-    }
-    if (info->freeUndecorated) {
-        BridgeFree(info->undecoratedSymbol);
+    if (res) {
+        if (info->freeDecorated) {
+            BridgeFree(info->decoratedSymbol);
+        }
+        if (info->freeUndecorated) {
+            BridgeFree(info->undecoratedSymbol);
+        }
     }
     BridgeFree(info);
 }
