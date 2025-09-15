@@ -24,10 +24,8 @@
 #include "pluginsdk/_scriptapi_stack.h"
 #include "pluginsdk/_scriptapi_symbol.h"
 
-#include "pluginsdk/DeviceNameResolver/DeviceNameResolver.h"
 #include "pluginsdk/jansson/jansson.h"
 #include "pluginsdk/lz4/lz4file.h"
-#include "pluginsdk/TitanEngine/TitanEngine.h"
 #include "pluginsdk/XEDParse/XEDParse.h"
 
 #include "xauto_server.h"

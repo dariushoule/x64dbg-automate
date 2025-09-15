@@ -621,9 +621,9 @@ void get_breakpoints(msgpack::object root, msgpack::sbuffer& response_buffer) {
             std::string(bp_list.bp[i].commandText),
             std::string(bp_list.bp[i].commandCondition)
         ));
-        BridgeFree(bp_list.bp);
     }
-
+    
+    BridgeFree(bp_list.bp);
     msgpack::pack(response_buffer, bp_vec);
 }
 
