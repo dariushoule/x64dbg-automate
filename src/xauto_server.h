@@ -33,6 +33,13 @@ constexpr const char* XAUTO_REQ_GET_COMMENT = "XAUTO_REQ_GET_COMMENT";
 constexpr const char* XAUTO_REQ_GET_SYMBOL = "XAUTO_REQ_GET_SYMBOL";
 constexpr const char* XAUTO_REQ_GET_LOG = "XAUTO_REQ_GET_LOG";
 
+// Local extension: native analysis lookups
+constexpr const char* XAUTO_REQ_XREF_COUNT_AT = "XAUTO_REQ_XREF_COUNT_AT";
+constexpr const char* XAUTO_REQ_XREF_TYPE_AT = "XAUTO_REQ_XREF_TYPE_AT";
+constexpr const char* XAUTO_REQ_XREF_GET = "XAUTO_REQ_XREF_GET";
+constexpr const char* XAUTO_REQ_FUNCTION_TYPE_AT = "XAUTO_REQ_FUNCTION_TYPE_AT";
+constexpr const char* XAUTO_REQ_MODULE_PATH = "XAUTO_REQ_MODULE_PATH";
+
 class XAutoServer {
     public:
     zmq::socket_t pub_socket;

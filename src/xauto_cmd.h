@@ -80,4 +80,14 @@ void get_label_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void get_comment_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void get_symbol_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void get_log(msgpack::object root, msgpack::sbuffer& response_buffer);
+
+// Local extension: native analysis lookups (no disassembly scan required).
+// These wrap DbgGetXrefCountAt / DbgGetXrefTypeAt / DbgGetFunctionTypeAt and
+// DbgFunctions()->ModPathFromAddr/Name.  All take one argument in root[1]:
+// an address (integer) or, for module_path, an address or module name (string).
+void xref_count_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+void xref_type_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+void xref_get(msgpack::object root, msgpack::sbuffer& response_buffer);
+void function_type_at(msgpack::object root, msgpack::sbuffer& response_buffer);
+void module_path(msgpack::object root, msgpack::sbuffer& response_buffer);
 std::wstring get_session_filename(size_t session_pid);

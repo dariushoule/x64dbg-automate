@@ -724,6 +724,89 @@ void get_log(msgpack::object root, msgpack::sbuffer& response_buffer) {
     msgpack::pack(response_buffer, std::make_tuple(snap.next_index, snap.entries, snap.remaining, snap.evicted));
 }
 
+// ---------------------------------------------------------------------------
+// Local extension: native analysis lookups
+// ---------------------------------------------------------------------------
+
+void xref_count_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, static_cast<size_t>(0));
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    msgpack::pack(response_buffer, static_cast<size_t>(DbgGetXrefCountAt(addr)));
+}
+
+void xref_type_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, static_cast<int>(0));
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    msgpack::pack(response_buffer, static_cast<int>(DbgGetXrefTypeAt(addr)));
+}
+
+void xref_get(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::vector<std::vector<size_t>> refs;
+    size_t addr;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, refs);
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+
+    XREF_INFO info = {};
+    if(DbgXrefGet(addr, &info) && info.references != nullptr) {
+        refs.reserve(info.refcount);
+        for(duint i = 0; i < info.refcount; i++)
+            refs.push_back({static_cast<size_t>(info.references[i].addr),
+                            static_cast<size_t>(info.references[i].type)});
+        BridgeFree(info.references);
+    }
+
+    msgpack::pack(response_buffer, refs);
+}
+
+void function_type_at(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, static_cast<int>(0));
+        return;
+    }
+
+    root.via.array.ptr[1].convert(addr);
+    msgpack::pack(response_buffer, static_cast<int>(DbgGetFunctionTypeAt(addr)));
+}
+
+void module_path(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    char path[MAX_PATH] = {0};
+    bool ok = false;
+
+    if(root.via.array.size >= 2) {
+        const msgpack::object& arg = root.via.array.ptr[1];
+        if(arg.type == msgpack::type::POSITIVE_INTEGER) {
+            duint addr = 0;
+            arg.convert(addr);
+            ok = DbgFunctions()->ModPathFromAddr(addr, path, static_cast<int>(sizeof(path))) > 0;
+        } else if(arg.type == msgpack::type::STR) {
+            std::string name;
+            arg.convert(name);
+            ok = DbgFunctions()->ModPathFromName(name.c_str(), path, static_cast<int>(sizeof(path))) > 0;
+        }
+    }
+
+    msgpack::pack(response_buffer, ok ? std::string(path) : std::string(""));
+}
+
 std::wstring get_session_filename(size_t session_pid) {
     wchar_t temp_path[MAX_PATH * 4];
     if (GetTempPathW(MAX_PATH * 2, temp_path) == 0) {

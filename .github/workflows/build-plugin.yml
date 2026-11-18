@@ -1,0 +1,46 @@
+name: build-plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - local/xref-native
+
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [x64, Win32]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: build-${{ matrix.platform }}/vcpkg_installed
+          key: vcpkg-${{ matrix.platform }}-${{ hashFiles('vcpkg.json') }}
+
+      - name: Configure
+        shell: cmd
+        run: cmake -B build-${{ matrix.platform }} -G "Visual Studio 17 2022" -A ${{ matrix.platform }}
+
+      - name: Build
+        shell: cmd
+        run: cmake --build build-${{ matrix.platform }} --config Release
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item "build-${{ matrix.platform }}/Release/*.dp*" out/ -ErrorAction SilentlyContinue
+          Copy-Item "build-${{ matrix.platform }}/Release/*.dll" out/ -ErrorAction SilentlyContinue
+          Get-ChildItem out | Format-Table Name,Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x64dbg-automate-${{ matrix.platform }}
+          path: out/*
+          if-no-files-found: error
