@@ -88,6 +88,7 @@ void get_log(msgpack::object root, msgpack::sbuffer& response_buffer);
 void xref_count_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void xref_type_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void xref_get(msgpack::object root, msgpack::sbuffer& response_buffer);
+void xref_add(msgpack::object root, msgpack::sbuffer& response_buffer);
 void function_type_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void module_path(msgpack::object root, msgpack::sbuffer& response_buffer);
 std::wstring get_session_filename(size_t session_pid);

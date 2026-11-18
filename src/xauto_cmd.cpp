@@ -763,16 +763,39 @@ void xref_get(msgpack::object root, msgpack::sbuffer& response_buffer) {
 
     root.via.array.ptr[1].convert(addr);
 
-    XREF_INFO info = {};
-    if(DbgXrefGet(addr, &info) && info.references != nullptr) {
-        refs.reserve(info.refcount);
-        for(duint i = 0; i < info.refcount; i++)
-            refs.push_back({static_cast<size_t>(info.references[i].addr),
-                            static_cast<size_t>(info.references[i].type)});
-        BridgeFree(info.references);
+    // XrefGet validates that info.refcount matches the stored reference count and
+    // copies into the caller-provided buffer; it does not allocate.
+    const auto count = static_cast<size_t>(DbgGetXrefCountAt(addr));
+    if(count > 0) {
+        std::vector<XREF_RECORD> records(count);
+        XREF_INFO info = {};
+        info.refcount = static_cast<duint>(count);
+        info.references = records.data();
+        if(DbgXrefGet(addr, &info)) {
+            refs.reserve(count);
+            for(size_t i = 0; i < count; i++)
+                refs.push_back({static_cast<size_t>(records[i].addr),
+                                static_cast<size_t>(records[i].type)});
+        }
     }
 
     msgpack::pack(response_buffer, refs);
+}
+
+void xref_add(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    size_t addr = 0;
+    size_t from = 0;
+    bool ok = false;
+
+    if(root.via.array.size >= 3 &&
+        root.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER &&
+        root.via.array.ptr[2].type == msgpack::type::POSITIVE_INTEGER) {
+        root.via.array.ptr[1].convert(addr);
+        root.via.array.ptr[2].convert(from);
+        ok = DbgXrefAdd(static_cast<duint>(addr), static_cast<duint>(from));
+    }
+
+    msgpack::pack(response_buffer, ok);
 }
 
 void function_type_at(msgpack::object root, msgpack::sbuffer& response_buffer) {

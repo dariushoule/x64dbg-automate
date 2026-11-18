@@ -37,6 +37,7 @@ constexpr const char* XAUTO_REQ_GET_LOG = "XAUTO_REQ_GET_LOG";
 constexpr const char* XAUTO_REQ_XREF_COUNT_AT = "XAUTO_REQ_XREF_COUNT_AT";
 constexpr const char* XAUTO_REQ_XREF_TYPE_AT = "XAUTO_REQ_XREF_TYPE_AT";
 constexpr const char* XAUTO_REQ_XREF_GET = "XAUTO_REQ_XREF_GET";
+constexpr const char* XAUTO_REQ_XREF_ADD = "XAUTO_REQ_XREF_ADD";
 constexpr const char* XAUTO_REQ_FUNCTION_TYPE_AT = "XAUTO_REQ_FUNCTION_TYPE_AT";
 constexpr const char* XAUTO_REQ_MODULE_PATH = "XAUTO_REQ_MODULE_PATH";
 
