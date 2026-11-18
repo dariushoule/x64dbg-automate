@@ -763,20 +763,15 @@ void xref_get(msgpack::object root, msgpack::sbuffer& response_buffer) {
 
     root.via.array.ptr[1].convert(addr);
 
-    // XrefGet validates that info.refcount matches the stored reference count and
-    // copies into the caller-provided buffer; it does not allocate.
-    const auto count = static_cast<size_t>(DbgGetXrefCountAt(addr));
-    if(count > 0) {
-        std::vector<XREF_RECORD> records(count);
-        XREF_INFO info = {};
-        info.refcount = static_cast<duint>(count);
-        info.references = records.data();
-        if(DbgXrefGet(addr, &info)) {
-            refs.reserve(count);
-            for(size_t i = 0; i < count; i++)
-                refs.push_back({static_cast<size_t>(records[i].addr),
-                                static_cast<size_t>(records[i].type)});
-        }
+    // The debug-side DBG_XREF_GET handler fills info.refcount itself and allocates
+    // info.references with BridgeAlloc; the caller must release it with BridgeFree.
+    XREF_INFO info = {};
+    if(DbgXrefGet(addr, &info) && info.references != nullptr) {
+        refs.reserve(info.refcount);
+        for(duint i = 0; i < info.refcount; i++)
+            refs.push_back({static_cast<size_t>(info.references[i].addr),
+                            static_cast<size_t>(info.references[i].type)});
+        BridgeFree(info.references);
     }
 
     msgpack::pack(response_buffer, refs);
