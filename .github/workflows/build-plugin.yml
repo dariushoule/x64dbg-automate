@@ -23,6 +23,17 @@ jobs:
           path: build-${{ matrix.platform }}/vcpkg_installed
           key: vcpkg-${{ matrix.platform }}-${{ hashFiles('vcpkg.json') }}
 
+      - name: Use runner MSYS2 pkg-config
+        shell: pwsh
+        run: |
+          if (Test-Path 'C:\msys64\usr\bin\pkg-config.exe') {
+            'C:\msys64\usr\bin' | Out-File -FilePath $env:GITHUB_PATH -Append
+            Write-Host 'pkg-config found in runner MSYS2'
+          } else {
+            Write-Host 'runner MSYS2 pkg-config not found; installing pkgconfiglite'
+            choco install pkgconfiglite -y --no-progress
+          }
+
       - name: Configure
         shell: cmd
         run: cmake -B build-${{ matrix.platform }} -G "Visual Studio 17 2022" -A ${{ matrix.platform }}
