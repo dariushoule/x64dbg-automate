@@ -1021,7 +1021,7 @@ void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer) {
     duint alloc_base = 0;
     for(int i = 0; i < mm.count; i++) {
         duint pb = reinterpret_cast<duint>(mm.page[i].mbi.BaseAddress);
-        duint ps = reinterpret_cast<duint>(mm.page[i].mbi.RegionSize);
+        duint ps = static_cast<duint>(mm.page[i].mbi.RegionSize);
         if(base >= pb && base < pb + ps) {
             alloc_base = reinterpret_cast<duint>(mm.page[i].mbi.AllocationBase);
             break;
@@ -1035,7 +1035,7 @@ void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer) {
     for(int i = 0; i < mm.count && targets.size() < 16; i++) {
         const auto& pg = mm.page[i];
         duint pb = reinterpret_cast<duint>(pg.mbi.BaseAddress);
-        duint ps = reinterpret_cast<duint>(pg.mbi.RegionSize);
+        duint ps = static_cast<duint>(pg.mbi.RegionSize);
         if(!ps || pg.mbi.Type != MEM_IMAGE)
             continue;
         if(alloc_base && reinterpret_cast<duint>(pg.mbi.AllocationBase) != alloc_base)
