@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - local/xref-native
+      - main
+  pull_request:
 
 jobs:
   build:
@@ -12,7 +14,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [x64, Win32]
+        include:
+          - platform: x64
+            triplet: x64-windows
+            arch_dir: x64
+            plugin_ext: dp64
+          - platform: Win32
+            triplet: x86-windows
+            arch_dir: x32
+            plugin_ext: dp32
 
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build-${{ matrix.platform }}/vcpkg_installed
-          key: vcpkg-${{ matrix.platform }}-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-${{ matrix.platform }}-${{ hashFiles('vcpkg.json', 'cmake.toml') }}
 
       - name: Configure
         shell: cmd
@@ -31,16 +41,30 @@ jobs:
         shell: cmd
         run: cmake --build build-${{ matrix.platform }} --config Release
 
-      - name: Collect artifacts
+      # The plugin links ZeroMQ dynamically, so a bare .dp64 crashes on load
+      # ("libzmq-mt-*.dll not found") on any machine that lacks vcpkg installed.
+      - name: Stage install tree (x64dbg release layout)
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force out | Out-Null
-          Copy-Item "build-${{ matrix.platform }}/Release/*.dp*" out/ -ErrorAction SilentlyContinue
-          Copy-Item "build-${{ matrix.platform }}/Release/*.dll" out/ -ErrorAction SilentlyContinue
-          Get-ChildItem out | Format-Table Name,Length
+          $arch = "${{ matrix.arch_dir }}"
+          $out = "out/$arch/plugins"
+          New-Item -ItemType Directory -Force $out | Out-Null
+
+          $plugin = Get-ChildItem "build-${{ matrix.platform }}/Release" -Filter "*.dp*" | Select-Object -First 1
+          if (-not $plugin) { throw "no plugin binary produced in build-${{ matrix.platform }}/Release" }
+          Copy-Item $plugin.FullName "$out/x64dbg-automate.${{ matrix.plugin_ext }}"
+
+          $bin = "build-${{ matrix.platform }}/vcpkg_installed/${{ matrix.triplet }}/bin"
+          if (Test-Path $bin) {
+            Copy-Item "$bin/*.dll" $out -ErrorAction SilentlyContinue
+          } else {
+            Write-Warning "vcpkg bin dir not found: $bin"
+          }
+
+          Get-ChildItem -Recurse out | Format-Table FullName,Length
 
       - uses: actions/upload-artifact@v4
         with:
-          name: x64dbg-automate-${{ matrix.platform }}
-          path: out/*
+          name: plugin-${{ matrix.arch_dir }}
+          path: out/${{ matrix.arch_dir }}
           if-no-files-found: error
