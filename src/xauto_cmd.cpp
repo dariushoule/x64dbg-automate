@@ -14,6 +14,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 
@@ -900,25 +901,52 @@ QueueResult queue_with_barrier(const std::vector<std::string>& cmds, int timeout
     return r;
 }
 
-// Restores the disassembly selection on every exit path, including msgpack
-// exceptions thrown while building the response.
+// The disassembly widget only accepts a selection inside the range it is
+// currently showing (CPUDisassembly::selectionSetSlot rejects anything else),
+// and x64dbg's analyse/analxrefs read their range from that selection. So the
+// view must be moved to the target first (GuiDisasmAt), then the selection can
+// be set. GuiDisasmAt is asynchronous, hence the polling helper.
+constexpr duint EXEC_PROTECT_MASK =
+    PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
+
+bool wait_view_at(duint addr, int timeout_ms) {
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+    SELECTIONDATA cur{};
+    while(std::chrono::steady_clock::now() < deadline) {
+        if(GuiSelectionGet(GUI_DISASSEMBLY, &cur)) {
+            duint size = 0;
+            duint view_base = DbgMemFindBaseAddr(cur.start, &size);
+            if(view_base && addr >= view_base && addr < view_base + size)
+                return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return false;
+}
+
+bool set_selection(duint start, duint end) {
+    SELECTIONDATA sel{};
+    sel.start = start;
+    sel.end   = end;
+    return GuiSelectionSet(GUI_DISASSEMBLY, &sel);
+}
+
+// Restores the disassembly view/selection on every exit path, including
+// msgpack exceptions thrown while building the response.
 struct SelectionGuard {
     SELECTIONDATA prev{};
-    bool          have = false;
+    bool          have  = false;
     bool          moved = false;
 
     SelectionGuard() {
         have = GuiSelectionGet(GUI_DISASSEMBLY, &prev);
     }
     ~SelectionGuard() {
-        if(moved && have)
-            GuiSelectionSet(GUI_DISASSEMBLY, &prev);
-    }
-    void set(duint start, duint end) {
-        SELECTIONDATA sel{};
-        sel.start = start;
-        sel.end   = end;
-        moved = GuiSelectionSet(GUI_DISASSEMBLY, &sel);
+        if(!moved || !have || !prev.start)
+            return;
+        GuiDisasmAt(prev.start, 0);
+        if(wait_view_at(prev.start, 2000))
+            set_selection(prev.start, prev.end);
     }
 };
 
@@ -983,15 +1011,43 @@ void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer) {
         return;
     }
 
-    // analyse/analxrefs ignore argv and use the disassembly selection's start,
-    // then expand to the whole memory region themselves. The end only needs to
-    // make the selection visible; clamp the requested size to the region.
-    duint end = region_base + region_size - 1;
-    if(req_size > 1) {
-        duint wanted_end = base + req_size - 1;
-        if(wanted_end > base && wanted_end < end)
-            end = wanted_end;
+    // collect the executable image regions of the module that owns base.
+    // Windows maps each section as its own region, so the PE header page alone
+    // (what DbgMemFindBaseAddr(base) returns for a module base) has no code —
+    // analysing only that is what made D17 look broken.
+    MEMMAP mm{};
+    DbgMemMap(&mm);
+
+    duint alloc_base = 0;
+    for(int i = 0; i < mm.count; i++) {
+        duint pb = static_cast<duint>(mm.page[i].mbi.BaseAddress);
+        duint ps = static_cast<duint>(mm.page[i].mbi.RegionSize);
+        if(base >= pb && base < pb + ps) {
+            alloc_base = static_cast<duint>(mm.page[i].mbi.AllocationBase);
+            break;
+        }
     }
+
+    duint win_end = (req_size > 1) ? base + req_size - 1 : 0; // 0 = whole module
+
+    struct RegionTarget { duint base; duint size; };
+    std::vector<RegionTarget> targets;
+    for(int i = 0; i < mm.count && targets.size() < 16; i++) {
+        const auto& pg = mm.page[i];
+        duint pb = static_cast<duint>(pg.mbi.BaseAddress);
+        duint ps = static_cast<duint>(pg.mbi.RegionSize);
+        if(!ps || pg.mbi.Type != MEM_IMAGE)
+            continue;
+        if(alloc_base && static_cast<duint>(pg.mbi.AllocationBase) != alloc_base)
+            continue;
+        if(!(pg.mbi.Protect & EXEC_PROTECT_MASK))
+            continue;
+        if(win_end && (pb + ps - 1 < base || pb > win_end))
+            continue;
+        targets.push_back({pb, ps});
+    }
+    if(targets.empty())
+        targets.push_back({region_base, region_size});
 
     std::vector<std::string> cmds;
     if(mode == "analyse" || mode == "anal") {
@@ -1004,21 +1060,43 @@ void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer) {
     }
 
     SelectionGuard sel;
-    sel.set(base, end);
-
-    QueueResult r = queue_with_barrier(cmds, timeout_s * 1000);
-
+    bool all_ok = true;
+    uint64_t total_ms = 0;
     std::ostringstream detail;
-    detail << "region=" << hex_addr(region_base) << " size=" << hex_addr(region_size)
-           << " selection=[" << hex_addr(base) << "," << hex_addr(end) << "]"
-           << " commands=";
-    for(size_t i = 0; i < cmds.size(); i++)
-        detail << (i ? "," : "") << cmds[i];
-    if(!r.executed)
-        detail << "\nnot finished: queued=" << (r.queued ? "true" : "false")
-               << " — debuggee probably running or analysis exceeded the timeout";
 
-    msgpack::pack(response_buffer, std::make_tuple(r.executed, r.elapsed_ms, detail.str()));
+    for(size_t i = 0; i < targets.size(); i++) {
+        const RegionTarget& t = targets[i];
+        const duint end = t.base + t.size - 1;
+
+        GuiDisasmAt(t.base, 0);
+        if(!wait_view_at(t.base, 2000)) {
+            detail << "[" << i << "] " << hex_addr(t.base) << " size=" << hex_addr(t.size)
+                   << ": disassembly view did not move (is the CPU window open?) — skipped\n";
+            all_ok = false;
+            continue;
+        }
+        if(!set_selection(t.base, end)) {
+            detail << "[" << i << "] " << hex_addr(t.base) << " size=" << hex_addr(t.size)
+                   << ": selection was rejected — skipped\n";
+            all_ok = false;
+            continue;
+        }
+        sel.moved = true;
+
+        QueueResult r = queue_with_barrier(cmds, timeout_s * 1000);
+        total_ms += r.elapsed_ms;
+        detail << "[" << i << "] " << hex_addr(t.base) << " size=" << hex_addr(t.size)
+               << " commands=";
+        for(size_t c = 0; c < cmds.size(); c++)
+            detail << (c ? "," : "") << cmds[c];
+        detail << " -> "
+               << (r.executed ? "done" : (r.queued ? "timeout" : "not queued"))
+               << " (" << r.elapsed_ms << " ms)\n";
+        if(!r.executed)
+            all_ok = false;
+    }
+
+    msgpack::pack(response_buffer, std::make_tuple(all_ok, total_ms, detail.str()));
 }
 
 void script_load(msgpack::object root, msgpack::sbuffer& response_buffer) {
