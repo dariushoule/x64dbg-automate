@@ -5,6 +5,17 @@
 #include <TlHelp32.h>
 #include <Shlwapi.h>
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <cstdio>
+#include <cstdlib>
+#include <mutex>
+#include <sstream>
+#include <string>
+#include <vector>
+
 
 void get_debugger_pid(msgpack::sbuffer& response_buffer) {
     msgpack::pack(response_buffer, GetCurrentProcessId());
@@ -823,6 +834,259 @@ void module_path(msgpack::object root, msgpack::sbuffer& response_buffer) {
     }
 
     msgpack::pack(response_buffer, ok ? std::string(path) : std::string(""));
+}
+
+// ---------------------------------------------------------------------------
+// Local extension: queue-aware execution (DbgCmdExec + sentinel command)
+//
+// DbgCmdExecDirect() (used by cmd_sync) runs on the RPC thread and bypasses the
+// debugger command queue; commands that depend on queue state never execute.
+// DbgCmdExec() queues, but is asynchronous. We therefore queue the real command
+// followed by "xauto_barrier <token>": the command thread processes them in
+// FIFO order, so the sentinel only runs after the real command finished.
+//
+// A token (not just a generation counter) is used so a sentinel from a timed-out
+// request can never satisfy a later wait. Tokens are monotonic; the callback
+// only advances g_barrier_done forward.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+std::mutex              g_barrier_cycle_mtx;   // one queue+wait cycle at a time
+std::mutex              g_barrier_mtx;
+std::condition_variable g_barrier_cv;
+std::atomic<uint64_t>   g_barrier_token{1};
+uint64_t                g_barrier_done = 0;    // guarded by g_barrier_mtx
+
+struct QueueResult {
+    bool     queued   = false;
+    bool     executed = false;
+    uint64_t elapsed_ms = 0;
+};
+
+// Queues every command, then one sentinel, and waits for the sentinel.
+QueueResult queue_with_barrier(const std::vector<std::string>& cmds, int timeout_ms) {
+    QueueResult r;
+    std::lock_guard<std::mutex> cycle(g_barrier_cycle_mtx);
+
+    const uint64_t token = g_barrier_token.fetch_add(1, std::memory_order_relaxed);
+    auto t0 = std::chrono::steady_clock::now();
+
+    bool queued = !cmds.empty();
+    for(const auto& c : cmds) {
+        if(!DbgCmdExec(c.c_str()))
+            queued = false;
+    }
+
+    char sentinel[64];
+    std::snprintf(sentinel, sizeof(sentinel), "xauto_barrier %llu",
+                  static_cast<unsigned long long>(token));
+    if(!DbgCmdExec(sentinel))
+        queued = false;
+
+    bool done = false;
+    if(queued) {
+        std::unique_lock<std::mutex> lk(g_barrier_mtx);
+        done = g_barrier_cv.wait_for(
+            lk, std::chrono::milliseconds(timeout_ms),
+            [token] { return g_barrier_done >= token; });
+    }
+
+    r.queued   = queued;
+    r.executed = queued && done;
+    r.elapsed_ms = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - t0).count());
+    return r;
+}
+
+// Restores the disassembly selection on every exit path, including msgpack
+// exceptions thrown while building the response.
+struct SelectionGuard {
+    SELECTIONDATA prev{};
+    bool          have = false;
+    bool          moved = false;
+
+    SelectionGuard() {
+        have = GuiSelectionGet(GUI_DISASSEMBLY, &prev);
+    }
+    ~SelectionGuard() {
+        if(moved && have)
+            GuiSelectionSet(GUI_DISASSEMBLY, &prev);
+    }
+    void set(duint start, duint end) {
+        SELECTIONDATA sel{};
+        sel.start = start;
+        sel.end   = end;
+        moved = GuiSelectionSet(GUI_DISASSEMBLY, &sel);
+    }
+};
+
+std::string hex_addr(duint v) {
+    std::ostringstream oss;
+    oss << "0x" << std::hex << std::uppercase << v;
+    return oss.str();
+}
+
+} // namespace
+
+bool cb_xauto_barrier(int argc, char** argv) {
+    if(argc < 2)
+        return false;
+
+    char* end = nullptr;
+    unsigned long long token = _strtoui64(argv[1], &end, 10);
+    if(end == argv[1])
+        return false;
+
+    {
+        std::lock_guard<std::mutex> lk(g_barrier_mtx);
+        if(g_barrier_done < token)
+            g_barrier_done = token;
+    }
+    g_barrier_cv.notify_all();
+    return true;
+}
+
+void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    duint base = 0;
+    duint req_size = 0;
+    std::string mode = "all";
+    int timeout_s = 20;
+
+    if(root.via.array.size < 2 || root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER) {
+        msgpack::pack(response_buffer, std::make_tuple(false, static_cast<uint64_t>(0),
+                                                       std::string("missing base address")));
+        return;
+    }
+    root.via.array.ptr[1].convert(base);
+    if(root.via.array.size >= 3 && root.via.array.ptr[2].type == msgpack::type::POSITIVE_INTEGER)
+        root.via.array.ptr[2].convert(req_size);
+    if(root.via.array.size >= 4 && root.via.array.ptr[3].type == msgpack::type::STR)
+        root.via.array.ptr[3].convert(mode);
+    if(root.via.array.size >= 5 && root.via.array.ptr[4].type == msgpack::type::POSITIVE_INTEGER)
+        root.via.array.ptr[4].convert(timeout_s);
+
+    timeout_s = std::clamp(timeout_s, 1, 300);
+
+    if(!base || !DbgMemIsValidReadPtr(base)) {
+        msgpack::pack(response_buffer, std::make_tuple(false, static_cast<uint64_t>(0),
+                                                       std::string("invalid address (not mapped): ") + hex_addr(base)));
+        return;
+    }
+
+    duint region_size = 0;
+    duint region_base = DbgMemFindBaseAddr(base, &region_size);
+    if(!region_base || !region_size) {
+        msgpack::pack(response_buffer, std::make_tuple(false, static_cast<uint64_t>(0),
+                                                       std::string("no mapped region at ") + hex_addr(base)));
+        return;
+    }
+
+    // analyse/analxrefs ignore argv and use the disassembly selection's start,
+    // then expand to the whole memory region themselves. The end only needs to
+    // make the selection visible; clamp the requested size to the region.
+    duint end = region_base + region_size - 1;
+    if(req_size > 1) {
+        duint wanted_end = base + req_size - 1;
+        if(wanted_end > base && wanted_end < end)
+            end = wanted_end;
+    }
+
+    std::vector<std::string> cmds;
+    if(mode == "analyse" || mode == "anal") {
+        cmds.emplace_back("analyse");
+    } else if(mode == "analxrefs") {
+        cmds.emplace_back("analxrefs");
+    } else {
+        cmds.emplace_back("analyse");
+        cmds.emplace_back("analxrefs");
+    }
+
+    SelectionGuard sel;
+    sel.set(base, end);
+
+    QueueResult r = queue_with_barrier(cmds, timeout_s * 1000);
+
+    std::ostringstream detail;
+    detail << "region=" << hex_addr(region_base) << " size=" << hex_addr(region_size)
+           << " selection=[" << hex_addr(base) << "," << hex_addr(end) << "]"
+           << " commands=";
+    for(size_t i = 0; i < cmds.size(); i++)
+        detail << (i ? "," : "") << cmds[i];
+    if(!r.executed)
+        detail << "\nnot finished: queued=" << (r.queued ? "true" : "false")
+               << " — debuggee probably running or analysis exceeded the timeout";
+
+    msgpack::pack(response_buffer, std::make_tuple(r.executed, r.elapsed_ms, detail.str()));
+}
+
+void script_load(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string path;
+    if(root.via.array.size >= 2 && root.via.array.ptr[1].type == msgpack::type::STR)
+        root.via.array.ptr[1].convert(path);
+
+    bool ok = false;
+    std::string msg;
+    if(path.empty()) {
+        msg = "missing script path";
+    } else {
+        // DbgScriptLoad reports failures only through the log; check the file
+        // first so the caller gets a deterministic error.
+        const DWORD attrs = GetFileAttributesA(path.c_str());
+        if(attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            msg = "script file not found: " + path;
+        } else {
+            DbgScriptLoad(path.c_str());
+            ok = true;
+            msg = "loaded " + path + " (parse errors, if any, are in the log)";
+        }
+    }
+    msgpack::pack(response_buffer, std::make_tuple(ok, msg));
+}
+
+void script_run(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    int destline = 0;
+    if(root.via.array.size >= 2 && root.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER)
+        root.via.array.ptr[1].convert(destline);
+    if(destline < 0)
+        destline = 0;
+
+    DbgScriptRun(destline);
+
+    char msg[128];
+    std::snprintf(msg, sizeof(msg),
+                  "script run requested from line %d (script errors go to the log)", destline);
+    msgpack::pack(response_buffer, std::make_tuple(true, std::string(msg)));
+}
+
+void script_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string cmd;
+    if(root.via.array.size >= 2 && root.via.array.ptr[1].type == msgpack::type::STR)
+        root.via.array.ptr[1].convert(cmd);
+
+    msgpack::pack(response_buffer, !cmd.empty() && DbgScriptCmdExec(cmd.c_str()));
+}
+
+void dbg_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    std::string cmd;
+    int timeout_s = 20;
+
+    if(root.via.array.size >= 2 && root.via.array.ptr[1].type == msgpack::type::STR)
+        root.via.array.ptr[1].convert(cmd);
+    if(root.via.array.size >= 3 && root.via.array.ptr[2].type == msgpack::type::POSITIVE_INTEGER)
+        root.via.array.ptr[2].convert(timeout_s);
+    timeout_s = std::clamp(timeout_s, 1, 300);
+
+    if(cmd.empty()) {
+        msgpack::pack(response_buffer, std::make_tuple(false, false, static_cast<uint64_t>(0)));
+        return;
+    }
+
+    QueueResult r = queue_with_barrier({cmd}, timeout_s * 1000);
+    // executed == the sentinel ran after the command; it says nothing about the
+    // command's own success (that is in the log, as with the GUI console).
+    msgpack::pack(response_buffer, std::make_tuple(r.queued, r.executed, r.elapsed_ms));
 }
 
 std::wstring get_session_filename(size_t session_pid) {

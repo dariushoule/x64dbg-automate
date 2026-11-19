@@ -89,6 +89,16 @@ int XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_
             function_type_at(root, response_buffer);
         } else if (cmd == XAUTO_REQ_MODULE_PATH) {
             module_path(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_ANALYSE_RANGE) {
+            analyse_range(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_SCRIPT_LOAD) {
+            script_load(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_SCRIPT_RUN) {
+            script_run(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_SCRIPT_CMDEXEC) {
+            script_cmd_exec(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_CMD_EXEC) {
+            dbg_cmd_exec(root, response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {
             msgpack::pack(response_buffer, "OK_QUITTING");
             return DISPATCH_EXIT;

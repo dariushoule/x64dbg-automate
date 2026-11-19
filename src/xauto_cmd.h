@@ -3,7 +3,7 @@
 #include <cstdint>
 
 
-constexpr const char* XAUTO_COMPAT_VERSION = "ghost_fungus"; // TODO: externalize
+constexpr const char* XAUTO_COMPAT_VERSION = "ghost_fungus_2026_11"; // TODO: externalize
 
 
 class XAutoErrorResponse {
@@ -91,4 +91,16 @@ void xref_get(msgpack::object root, msgpack::sbuffer& response_buffer);
 void xref_add(msgpack::object root, msgpack::sbuffer& response_buffer);
 void function_type_at(msgpack::object root, msgpack::sbuffer& response_buffer);
 void module_path(msgpack::object root, msgpack::sbuffer& response_buffer);
+
+// Local extension: queue-aware command execution and x64dbg's own analysis.
+// x64dbg's analyse/analxrefs commands ignore their arguments and work on the
+// GUI disassembly selection, so analyse_range sets/restores the selection and
+// waits for a sentinel command (xauto_barrier) to run after them.
+void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer);
+void script_load(msgpack::object root, msgpack::sbuffer& response_buffer);
+void script_run(msgpack::object root, msgpack::sbuffer& response_buffer);
+void script_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer);
+void dbg_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer);
+bool cb_xauto_barrier(int argc, char** argv);
+
 std::wstring get_session_filename(size_t session_pid);

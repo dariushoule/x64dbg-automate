@@ -1,5 +1,6 @@
 #include "plugin.h"
 #include "pluginmain.h"
+#include "xauto_cmd.h"
 #include "xauto_log.h"
 #include "resource.h"
 
@@ -368,6 +369,10 @@ bool pluginInit(PLUG_INITSTRUCT* initStruct)
     _plugin_registercallback(pluginHandle, CB_CREATEPROCESS, cb_create_process);
     _plugin_registercallback(pluginHandle, CB_EXITPROCESS, cb_exit_process);
     _plugin_registercallback(pluginHandle, CB_MENUENTRY, cb_menu_entry);
+    // Sentinel used to detect that every command queued before it has run.
+    // debugonly=false so it also works with no debuggee loaded.
+    if(!_plugin_registercommand(pluginHandle, "xauto_barrier", cb_xauto_barrier, false))
+        dprintf("failed to register xauto_barrier command\n");
     return true;
 }
 
