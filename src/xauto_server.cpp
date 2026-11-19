@@ -95,8 +95,6 @@ int XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_
             script_load(root, response_buffer);
         } else if (cmd == XAUTO_REQ_SCRIPT_RUN) {
             script_run(root, response_buffer);
-        } else if (cmd == XAUTO_REQ_SCRIPT_CMDEXEC) {
-            script_cmd_exec(root, response_buffer);
         } else if (cmd == XAUTO_REQ_DBG_CMD_EXEC) {
             dbg_cmd_exec(root, response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {

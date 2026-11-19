@@ -99,7 +99,6 @@ void module_path(msgpack::object root, msgpack::sbuffer& response_buffer);
 void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer);
 void script_load(msgpack::object root, msgpack::sbuffer& response_buffer);
 void script_run(msgpack::object root, msgpack::sbuffer& response_buffer);
-void script_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer);
 void dbg_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer);
 bool cb_xauto_barrier(int argc, char** argv);
 

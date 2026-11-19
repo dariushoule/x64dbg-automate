@@ -43,7 +43,6 @@ constexpr const char* XAUTO_REQ_MODULE_PATH = "XAUTO_REQ_MODULE_PATH";
 constexpr const char* XAUTO_REQ_ANALYSE_RANGE = "XAUTO_REQ_ANALYSE_RANGE";
 constexpr const char* XAUTO_REQ_SCRIPT_LOAD = "XAUTO_REQ_SCRIPT_LOAD";
 constexpr const char* XAUTO_REQ_SCRIPT_RUN = "XAUTO_REQ_SCRIPT_RUN";
-constexpr const char* XAUTO_REQ_SCRIPT_CMDEXEC = "XAUTO_REQ_SCRIPT_CMDEXEC";
 constexpr const char* XAUTO_REQ_DBG_CMD_EXEC = "XAUTO_REQ_DBG_CMD_EXEC";
 
 class XAutoServer {

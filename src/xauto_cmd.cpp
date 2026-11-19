@@ -1138,14 +1138,6 @@ void script_run(msgpack::object root, msgpack::sbuffer& response_buffer) {
     msgpack::pack(response_buffer, std::make_tuple(true, std::string(msg)));
 }
 
-void script_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer) {
-    std::string cmd;
-    if(root.via.array.size >= 2 && root.via.array.ptr[1].type == msgpack::type::STR)
-        root.via.array.ptr[1].convert(cmd);
-
-    msgpack::pack(response_buffer, !cmd.empty() && DbgScriptCmdExec(cmd.c_str()));
-}
-
 void dbg_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer) {
     std::string cmd;
     int timeout_s = 20;
