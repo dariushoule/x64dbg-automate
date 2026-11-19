@@ -1127,21 +1127,38 @@ void analyse_linear(msgpack::object root, msgpack::sbuffer& response_buffer) {
     if(root.via.array.size < 3 ||
        root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
        root.via.array.ptr[2].type != msgpack::type::POSITIVE_INTEGER) {
-        fail("analyse_linear needs base and size");
+        fail("analyse_linear needs scan_base and scan_size");
         return;
     }
 
-    duint base = 0;
-    duint size = 0;
-    root.via.array.ptr[1].convert(base);
-    root.via.array.ptr[2].convert(size);
+    duint scan_base = 0, scan_size = 0;
+    duint tgt_base = 0, tgt_size = 0;
+    root.via.array.ptr[1].convert(scan_base);
+    root.via.array.ptr[2].convert(scan_size);
+    // Optional [3]/[4]: keep edges that point anywhere in this window (usually
+    // the whole module) while only disassembling the given scan range (usually
+    // its executable pages). Defaults to the scan range itself.
+    if(root.via.array.size >= 5 &&
+       root.via.array.ptr[3].type == msgpack::type::POSITIVE_INTEGER &&
+       root.via.array.ptr[4].type == msgpack::type::POSITIVE_INTEGER) {
+        root.via.array.ptr[3].convert(tgt_base);
+        root.via.array.ptr[4].convert(tgt_size);
+    }
+    if(!tgt_size) {
+        tgt_base = scan_base;
+        tgt_size = scan_size;
+    }
 
-    if(!base || !size) {
-        fail("base/size must be non-zero");
+    if(!scan_base || !scan_size) {
+        fail("scan_base/scan_size must be non-zero");
         return;
     }
-    if(size > LINEAR_SCAN_LIMIT) {
-        fail("range too large for a single pass (64 MB limit): " + hex_addr(size));
+    if(scan_size > LINEAR_SCAN_LIMIT) {
+        fail("scan range too large for a single pass (64 MB limit): " + hex_addr(scan_size));
+        return;
+    }
+    if(!tgt_size) {
+        fail("target window must be non-zero");
         return;
     }
     if(!DbgIsDebugging()) {
@@ -1152,32 +1169,40 @@ void analyse_linear(msgpack::object root, msgpack::sbuffer& response_buffer) {
         fail("debuggee is running — pause first, memory reads would be stale");
         return;
     }
-    if(!DbgMemIsValidReadPtr(base)) {
-        fail("base is not mapped: " + hex_addr(base));
+    if(!DbgMemIsValidReadPtr(scan_base)) {
+        fail("scan_base is not mapped: " + hex_addr(scan_base));
         return;
     }
 
-    const duint end = base + size;
+    const duint scan_end = scan_base + scan_size;
+    const duint tgt_end = tgt_base + tgt_size;
+
     std::vector<XREF_EDGE> edges;
     std::vector<RefPair> out;
     uint64_t instr_count = 0;
 
     const auto t0 = std::chrono::steady_clock::now();
-    for(duint addr = base; addr < end;) {
-        DISASM_INSTR instr{};
-        DbgDisasmAt(addr, &instr);
-        const int len = instr.instr_size;
+    for(duint addr = scan_base; addr < scan_end;) {
+        // DbgDisasmFastAt instead of DbgDisasmAt: we only need the instruction
+        // length and the resolved operand values, and the fast path skips the
+        // mnemonic/symbol formatting that made the full call ~20 us per insn.
+        BASIC_INSTRUCTION_INFO info{};
+        DbgDisasmFastAt(addr, &info);
+        const int len = info.size;
         if(len <= 0) {
             // Undecodable byte: x64dbg's own XrefsAnalysis advances by one too.
             addr++;
             continue;
         }
         instr_count++;
-        for(int i = 0; i < instr.argcount && i < 3; i++) {
-            // `constant` is the immediate/displacement x64dbg resolved for the
-            // operand; register operands carry 0, so they fall through here.
-            const duint dest = static_cast<duint>(instr.arg[i].constant);
-            if(dest >= base && dest < end) {
+
+        const duint candidates[3] = {
+            static_cast<duint>(info.addr),                                    // branch target
+            (info.type & TYPE_MEMORY) ? static_cast<duint>(info.memory.value) : 0, // rip-relative operand
+            (info.type & TYPE_VALUE) ? static_cast<duint>(info.value.value) : 0,   // immediate
+        };
+        for(duint dest : candidates) {
+            if(dest >= tgt_base && dest < tgt_end) {
                 edges.push_back(XREF_EDGE{dest, addr});
                 out.emplace_back(static_cast<uint64_t>(addr), static_cast<uint64_t>(dest));
                 break; // one edge per instruction, same as XrefsAnalysis
