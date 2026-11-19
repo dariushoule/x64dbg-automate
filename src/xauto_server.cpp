@@ -77,6 +77,28 @@ int XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_
             get_symbol_at(root, response_buffer);
         } else if (cmd == XAUTO_REQ_GET_LOG) {
             get_log(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_XREF_COUNT_AT) {
+            xref_count_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_XREF_TYPE_AT) {
+            xref_type_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_XREF_GET) {
+            xref_get(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_XREF_ADD) {
+            xref_add(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_FUNCTION_TYPE_AT) {
+            function_type_at(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_MODULE_PATH) {
+            module_path(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_ANALYSE_RANGE) {
+            analyse_range(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_ANALYSE_LINEAR) {
+            analyse_linear(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_SCRIPT_LOAD) {
+            script_load(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_SCRIPT_RUN) {
+            script_run(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_DBG_CMD_EXEC) {
+            dbg_cmd_exec(root, response_buffer);
         } else if (cmd == XAUTO_REQ_QUIT) {
             msgpack::pack(response_buffer, "OK_QUITTING");
             return DISPATCH_EXIT;

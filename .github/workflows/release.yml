@@ -1,0 +1,94 @@
+name: release
+
+on:
+  push:
+    tags: ["v*", "local.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (e.g. local.14)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: x64
+            triplet: x64-windows
+            arch_dir: x64
+            plugin_ext: dp64
+          - platform: Win32
+            triplet: x86-windows
+            arch_dir: x32
+            plugin_ext: dp32
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Cache vcpkg installed tree
+        uses: actions/cache@v4
+        with:
+          path: build-${{ matrix.platform }}/vcpkg_installed
+          key: vcpkg-${{ matrix.platform }}-${{ hashFiles('vcpkg.json', 'cmake.toml') }}
+
+      - name: Configure
+        shell: cmd
+        run: cmake -B build-${{ matrix.platform }} -G "Visual Studio 17 2022" -A ${{ matrix.platform }}
+
+      - name: Build
+        shell: cmd
+        run: cmake --build build-${{ matrix.platform }} --config Release
+
+      - name: Stage install tree
+        shell: pwsh
+        run: |
+          $out = "out/${{ matrix.arch_dir }}/plugins"
+          New-Item -ItemType Directory -Force $out | Out-Null
+
+          $plugin = Get-ChildItem "build-${{ matrix.platform }}/Release" -Filter "*.dp*" | Select-Object -First 1
+          if (-not $plugin) { throw "no plugin binary produced" }
+          Copy-Item $plugin.FullName "$out/x64dbg-automate.${{ matrix.plugin_ext }}"
+
+          $bin = "build-${{ matrix.platform }}/vcpkg_installed/${{ matrix.triplet }}/bin"
+          if (Test-Path $bin) { Copy-Item "$bin/*.dll" $out -ErrorAction SilentlyContinue }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-${{ matrix.arch_dir }}
+          path: out/${{ matrix.arch_dir }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: staging
+
+      # Drop-in for a x64dbg release dir: unzip at the release root, both
+      # architectures land in x64\plugins and x32\plugins.
+      - name: Package drop-in zip
+        run: |
+          set -euo pipefail
+          mkdir -p pkg
+          cp -r staging/plugin-x64 pkg/x64
+          cp -r staging/plugin-x32 pkg/x32
+          find pkg -type f | sort
+          (cd pkg && zip -r "../x64dbg-automate-${GITHUB_REF_NAME}.zip" .)
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: x64dbg-automate-*.zip
+          fail_on_unmatched_files: true
