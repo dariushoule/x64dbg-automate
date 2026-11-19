@@ -97,6 +97,10 @@ void module_path(msgpack::object root, msgpack::sbuffer& response_buffer);
 // GUI disassembly selection, so analyse_range sets/restores the selection and
 // waits for a sentinel command (xauto_barrier) to run after them.
 void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer);
+// Local extension: linear disassembly scan inside the plugin (1:1 port of
+// x64dbg's XrefsAnalysis). Returns every (from, to) edge in one round-trip and
+// does not touch the GUI selection, so it works headless.
+void analyse_linear(msgpack::object root, msgpack::sbuffer& response_buffer);
 void script_load(msgpack::object root, msgpack::sbuffer& response_buffer);
 void script_run(msgpack::object root, msgpack::sbuffer& response_buffer);
 void dbg_cmd_exec(msgpack::object root, msgpack::sbuffer& response_buffer);

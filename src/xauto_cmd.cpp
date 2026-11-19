@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <mutex>
 #include <sstream>
+#include <tuple>
 #include <string>
 #include <thread>
 #include <vector>
@@ -1097,6 +1098,109 @@ void analyse_range(msgpack::object root, msgpack::sbuffer& response_buffer) {
     }
 
     msgpack::pack(response_buffer, std::make_tuple(all_ok, total_ms, detail.str()));
+}
+
+// Local extension (local.16): linear analysis inside the plugin.
+//
+// 1:1 port of x64dbg's XrefsAnalysis (src/dbg/analysis/xrefsanalysis.cpp, 54
+// lines). The built-in `analxrefs` command takes its range from the GUI
+// disassembly selection, which automation cannot rely on: with no CPU window the
+// selection is empty, and GuiSelectionSet rejects ranges outside the current
+// view. Running the same scan here removes that dependency entirely.
+//
+// Why it also fixes lookups from Python: one round-trip returns every edge in
+// the range, instead of one `disassemble_at` round-trip per instruction. That is
+// the difference between ~40 s and well under a second on a 300 KB module.
+constexpr duint LINEAR_SCAN_LIMIT = 64 * 1024 * 1024;
+
+void analyse_linear(msgpack::object root, msgpack::sbuffer& response_buffer) {
+    using RefPair = std::tuple<uint64_t, uint64_t>;
+    auto fail = [&](const std::string& why) {
+        msgpack::pack(response_buffer, std::make_tuple(false,
+                                                      static_cast<uint64_t>(0),
+                                                      static_cast<uint64_t>(0),
+                                                      static_cast<uint64_t>(0),
+                                                      std::vector<RefPair>{},
+                                                      why));
+    };
+
+    if(root.via.array.size < 3 ||
+       root.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
+       root.via.array.ptr[2].type != msgpack::type::POSITIVE_INTEGER) {
+        fail("analyse_linear needs base and size");
+        return;
+    }
+
+    duint base = 0;
+    duint size = 0;
+    root.via.array.ptr[1].convert(base);
+    root.via.array.ptr[2].convert(size);
+
+    if(!base || !size) {
+        fail("base/size must be non-zero");
+        return;
+    }
+    if(size > LINEAR_SCAN_LIMIT) {
+        fail("range too large for a single pass (64 MB limit): " + hex_addr(size));
+        return;
+    }
+    if(!DbgIsDebugging()) {
+        fail("no debuggee");
+        return;
+    }
+    if(DbgIsRunning()) {
+        fail("debuggee is running — pause first, memory reads would be stale");
+        return;
+    }
+    if(!DbgMemIsValidReadPtr(base)) {
+        fail("base is not mapped: " + hex_addr(base));
+        return;
+    }
+
+    const duint end = base + size;
+    std::vector<XREF_EDGE> edges;
+    std::vector<RefPair> out;
+    uint64_t instr_count = 0;
+
+    const auto t0 = std::chrono::steady_clock::now();
+    for(duint addr = base; addr < end;) {
+        DISASM_INSTR instr{};
+        DbgDisasmAt(addr, &instr);
+        const int len = instr.instr_size;
+        if(len <= 0) {
+            // Undecodable byte: x64dbg's own XrefsAnalysis advances by one too.
+            addr++;
+            continue;
+        }
+        instr_count++;
+        for(int i = 0; i < instr.argcount && i < 3; i++) {
+            // `constant` is the immediate/displacement x64dbg resolved for the
+            // operand; register operands carry 0, so they fall through here.
+            const duint dest = static_cast<duint>(instr.arg[i].constant);
+            if(dest >= base && dest < end) {
+                edges.push_back(XREF_EDGE{dest, addr});
+                out.emplace_back(static_cast<uint64_t>(addr), static_cast<uint64_t>(dest));
+                break; // one edge per instruction, same as XrefsAnalysis
+            }
+        }
+        addr += len;
+    }
+
+    // Feed x64dbg's own table as well, so the GUI and x64dbg-side queries agree
+    // with what we return. AddMulti de-duplicates internally.
+    if(!edges.empty())
+        DbgXrefAddMulti(edges.data(), static_cast<duint>(edges.size()));
+
+    const uint64_t elapsed_ms = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - t0).count());
+
+    msgpack::pack(response_buffer, std::make_tuple(true,
+                                                  static_cast<uint64_t>(out.size()),
+                                                  instr_count,
+                                                  elapsed_ms,
+                                                  out,
+                                                  std::string()));
 }
 
 void script_load(msgpack::object root, msgpack::sbuffer& response_buffer) {

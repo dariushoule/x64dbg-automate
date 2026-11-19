@@ -91,6 +91,8 @@ int XAutoServer::_dispatch_cmd(msgpack::object root, msgpack::sbuffer& response_
             module_path(root, response_buffer);
         } else if (cmd == XAUTO_REQ_ANALYSE_RANGE) {
             analyse_range(root, response_buffer);
+        } else if (cmd == XAUTO_REQ_ANALYSE_LINEAR) {
+            analyse_linear(root, response_buffer);
         } else if (cmd == XAUTO_REQ_SCRIPT_LOAD) {
             script_load(root, response_buffer);
         } else if (cmd == XAUTO_REQ_SCRIPT_RUN) {
