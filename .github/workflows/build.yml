@@ -1,0 +1,116 @@
+name: Build
+
+# Every push/PR builds both bitnesses, so a broken build shows up immediately.
+# Pushing a tag like v0.8.2-ghost_fungus additionally creates a *draft* GitHub
+# release with release32-/release64-<version>.zip attached. Nothing is public
+# until you review and publish the draft.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.bits }}-bit
+    # Pinned to the VS 2022 image to match the toolchain releases have always been built with
+    # (windows-latest is VS 2026).
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - bits: 64
+            arch: x64
+            triplet: x64-windows
+          - bits: 32
+            arch: Win32
+            triplet: x86-windows
+    env:
+      VCPKG_BINARY_CACHE: ${{ github.workspace }}\.vcpkg-cache
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Determine version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $version = $env:GITHUB_REF_NAME -replace '^v', ''
+            $codename = ($version -split '-', 2)[1]
+            $header = Get-Content src/xauto_cmd.h -Raw
+            $compat = [regex]::Match($header, 'XAUTO_COMPAT_VERSION\s*=\s*"([^"]+)"').Groups[1].Value
+            if (-not $codename -or $codename -ne $compat) {
+              throw "Tag codename '$codename' does not match XAUTO_COMPAT_VERSION '$compat' in src/xauto_cmd.h"
+            }
+          } else {
+            $version = "dev-$($env:GITHUB_SHA.Substring(0, 7))"
+          }
+          "VERSION=$version" >> $env:GITHUB_ENV
+          Write-Host "Version: $version"
+
+      # vcpkg builds boost/msgpack/zeromq/detours from source; cache the built packages.
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v6
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ matrix.triplet }}-${{ hashFiles('cmake.toml', 'vcpkg.json') }}
+          restore-keys: vcpkg-${{ matrix.triplet }}-
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:VCPKG_BINARY_CACHE | Out-Null
+          $env:VCPKG_BINARY_SOURCES = "clear;files,$env:VCPKG_BINARY_CACHE,readwrite"
+          cmake -B build${{ matrix.bits }} -A ${{ matrix.arch }}
+
+      - name: Build
+        run: cmake --build build${{ matrix.bits }} --config Release
+
+      # Same layout package-release.ps1 has always produced: Release\<files>.
+      - name: Package
+        shell: pwsh
+        run: Compress-Archive -Path "build${{ matrix.bits }}\Release" -DestinationPath "release${{ matrix.bits }}-$env:VERSION.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release${{ matrix.bits }}
+          path: release${{ matrix.bits }}-*.zip
+          if-no-files-found: error
+
+  draft-release:
+    name: Draft GitHub release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ls -l dist
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            if [ "$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)" != "true" ]; then
+              echo "::error::Release $TAG is already published; refusing to replace its assets"
+              exit 1
+            fi
+            gh release upload "$TAG" dist/*.zip --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/*.zip --draft --verify-tag --title "$TAG" --generate-notes -R "$GITHUB_REPOSITORY"
+          fi

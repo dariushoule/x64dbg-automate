@@ -24,11 +24,20 @@ Prefer these over manual cmake + copy steps:
 
 - `build-install-64.cmd` / `build-install-32.cmd` (thin wrappers over `build-install.cmd 64|32`) — configure, build Release, and copy the plugin (`.dp64`/`.dp32` + `libzmq-mt-4_3_5.dll`) into `<X64DBG_RELEASE_DIR>\x64\plugins\` (or `x32`). cmake is found via vswhere, so they work from any shell.
 - Machine-specific settings (`X64DBG_RELEASE_DIR`, optional `CMAKE_BIN` / `CMAKE_GENERATOR`) live in `local.cmd` (gitignored; template `local.cmd.example`) or env vars — never hardcode local paths in checked-in files. Without `X64DBG_RELEASE_DIR` the scripts build but skip the install.
-- `package-release.ps1` — runs both build-install scripts, then zips `build32/Release` and `build64/Release` into `release{32,64}-<version>.zip`. The version string (e.g. `0.7.0-lilac_bonnet`) is hardcoded at the top of the script; its codename suffix must match `XAUTO_COMPAT_VERSION` in `src/xauto_cmd.h` (the client/plugin handshake), which must be bumped whenever the wire protocol changes.
+- `package-release.ps1` — local fallback only (releases come from CI, below): runs both build-install scripts, then zips `build32/Release` and `build64/Release` into `release{32,64}-<version>.zip` using the version hardcoded at the top of the script.
+
+## Releasing
+
+Release artifacts are built by CI (`.github/workflows/build.yml`, `windows-2022` / VS 2022), not locally. Every push to `main` and every PR builds both bitnesses; the zips are downloadable from the workflow run.
+
+1. If the wire protocol changed, bump `XAUTO_COMPAT_VERSION` in `src/xauto_cmd.h` (codename convention: see pyclient) and commit.
+2. Tag and push: `git tag v<semver>-<codename>` then `git push origin v<semver>-<codename>`. The tag's codename must match `XAUTO_COMPAT_VERSION`, or CI fails the build.
+3. CI creates a **draft** GitHub release for the tag with `release{32,64}-<semver>-<codename>.zip` and auto-generated notes. Re-running the workflow refreshes a draft's assets but refuses to touch a published release.
+4. Run the e2e smoke test below against the draft's zips (`gh release download <tag>` works on drafts), then publish the draft.
 
 ## Release e2e smoke test
 
-After publishing a GitHub release here and the matching pyclient to PyPI, verify the deployed artifacts work together — using only published artifacts, nothing from the local working trees. **Both bitnesses ship, so both get exercised** — see step 5.
+Once CI has drafted the GitHub release here (see Releasing) and the matching pyclient is on PyPI, verify the release artifacts work together before publishing the draft — using only published artifacts, nothing from the local working trees. **Both bitnesses ship, so both get exercised** — see step 5.
 
 1. **Pristine x64dbg** — copy `build64/_deps/x64dbg-src/release` (the extracted snapshot, no config/plugins) to a temp dir. The snapshot contains both `x32/` and `x64/`, so one copy serves both legs.
 2. **Plugin from GitHub** — download `release64-<version>.zip` and `release32-<version>.zip` from the release. Copy `Release/x64dbg-automate.dp64` + `Release/libzmq-mt-4_3_5.dll` from the 64-bit zip into `<temp>/x64/plugins/`, and `Release/x64dbg-automate.dp32` + its `libzmq-mt-4_3_5.dll` from the 32-bit zip into `<temp>/x32/plugins/`. The two zips carry different `libzmq` builds — do not cross them.
