@@ -10,7 +10,7 @@ include-before = [
 ]
 
 [vcpkg]
-version = "2025.01.13"
+version = "2026.10.16"
 packages = ["cppzmq", "msgpack[boost]", "detours"]
 
 [find-package.cppzmq]
