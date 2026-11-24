@@ -1,0 +1,11 @@
+@rem Copy to local.cmd (gitignored) and edit for your machine. Read by build-install*.cmd.
+
+@rem x64dbg "release" directory (contains x32\ and x64\). The plugin is copied into
+@rem its x32\plugins or x64\plugins. Leave unset to build without installing.
+set X64DBG_RELEASE_DIR=C:\path\to\x64dbg\release
+
+@rem Optional: cmake.exe to use. Default: VS-bundled cmake found via vswhere, then cmake on PATH.
+@rem set CMAKE_BIN=C:\path\to\cmake.exe
+
+@rem Optional: CMake generator. Default: Visual Studio 17 2022.
+@rem set CMAKE_GENERATOR=Visual Studio 18 2026

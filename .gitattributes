@@ -1,3 +1,11 @@
 # cmkr
 /**/CMakeLists.txt linguist-generated
 /cmake/*.cmake linguist-vendored
+
+# cmkr regenerates these from cmake.toml with LF endings on every configure.
+# Pin LF so core.autocrlf=true checkouts don't show them modified after each build.
+/**/CMakeLists.txt text eol=lf
+/vcpkg.json text eol=lf
+
+# cmd.exe mis-parses labels/goto in LF batch files; keep them CRLF on every checkout.
+*.cmd text eol=crlf

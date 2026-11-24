@@ -4,3 +4,6 @@ build*/
 cmake-build-*/
 /CMakeSettings.json
 .claude/settings.local.json
+
+# Machine-specific build settings (see local.cmd.example)
+/local.cmd

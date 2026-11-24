@@ -53,6 +53,8 @@ cmake -B build32 -A Win32
 cmake --build build32 --config Release
 ```
 
+Or use `build-install-64.cmd` / `build-install-32.cmd` from any shell: they find Visual Studio's bundled cmake, build Release, and copy the plugin into your x64dbg `plugins` folder. Copy `local.cmd.example` to `local.cmd` (gitignored) and set `X64DBG_RELEASE_DIR` to enable the install step.
+
 # Contributing
 
 Issues, feature-requests, and pull-requests are welcome on this project ❤️🐛

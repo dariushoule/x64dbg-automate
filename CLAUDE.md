@@ -22,7 +22,8 @@ Output: `build64/Release/x64dbg-automate.dp64`
 
 Prefer these over manual cmake + copy steps:
 
-- `build-install-64.cmd` / `build-install-32.cmd` — configure, build Release, and copy the plugin (`.dp64`/`.dp32` + `libzmq-mt-4_3_5.dll`) into the local x64dbg dev install at `C:\re\x64dbg_dev\release\x64\plugins\` (or `x32`).
+- `build-install-64.cmd` / `build-install-32.cmd` (thin wrappers over `build-install.cmd 64|32`) — configure, build Release, and copy the plugin (`.dp64`/`.dp32` + `libzmq-mt-4_3_5.dll`) into `<X64DBG_RELEASE_DIR>\x64\plugins\` (or `x32`). cmake is found via vswhere, so they work from any shell.
+- Machine-specific settings (`X64DBG_RELEASE_DIR`, optional `CMAKE_BIN` / `CMAKE_GENERATOR`) live in `local.cmd` (gitignored; template `local.cmd.example`) or env vars — never hardcode local paths in checked-in files. Without `X64DBG_RELEASE_DIR` the scripts build but skip the install.
 - `package-release.ps1` — runs both build-install scripts, then zips `build32/Release` and `build64/Release` into `release{32,64}-<version>.zip`. The version string (e.g. `0.7.0-lilac_bonnet`) is hardcoded at the top of the script; its codename suffix must match `XAUTO_COMPAT_VERSION` in `src/xauto_cmd.h` (the client/plugin handshake), which must be bumped whenever the wire protocol changes.
 
 ## Release e2e smoke test
