@@ -33,7 +33,7 @@ Release artifacts are built by CI (`.github/workflows/build.yml`, `windows-2022`
 1. If the wire protocol changed, bump `XAUTO_COMPAT_VERSION` in `src/xauto_cmd.h` (codename convention: see pyclient) and commit.
 2. Tag and push: `git tag v<semver>-<codename>` then `git push origin v<semver>-<codename>`. The tag's codename must match `XAUTO_COMPAT_VERSION`, or CI fails the build.
 3. CI creates a **draft** GitHub release for the tag with `release{32,64}-<semver>-<codename>.zip` and auto-generated notes. Re-running the workflow refreshes a draft's assets but refuses to touch a published release.
-4. Run the e2e smoke test below against the draft's zips (`gh release download <tag>` works on drafts), then publish the draft.
+4. Run the e2e smoke test below against the draft's zips (`gh release download <tag>` works on drafts), then publish the draft. When the protocol changed, publish the pyclient draft too (that's what uploads it to PyPI; see pyclient's CLAUDE.md).
 
 ## Release e2e smoke test
 
@@ -41,7 +41,7 @@ Once CI has drafted the GitHub release here (see Releasing) and the matching pyc
 
 1. **Pristine x64dbg** — copy `build64/_deps/x64dbg-src/release` (the extracted snapshot, no config/plugins) to a temp dir. The snapshot contains both `x32/` and `x64/`, so one copy serves both legs.
 2. **Plugin from GitHub** — download `release64-<version>.zip` and `release32-<version>.zip` from the release. Copy `Release/x64dbg-automate.dp64` + `Release/libzmq-mt-4_3_5.dll` from the 64-bit zip into `<temp>/x64/plugins/`, and `Release/x64dbg-automate.dp32` + its `libzmq-mt-4_3_5.dll` from the 32-bit zip into `<temp>/x32/plugins/`. The two zips carry different `libzmq` builds — do not cross them.
-3. **Client from PyPI** — `python -m venv <temp>/venv`, then `pip install x64dbg-automate`; confirm `pip show` reports the new version (proves PyPI publish is live).
+3. **Client from the pyclient draft release** — `python -m venv <temp>/venv`, then `gh release download <pyclient tag> -R dariushoule/x64dbg-automate-pyclient -p '*.whl'` and `pip install` that wheel (`x64dbg_automate-<version>-py3-none-any.whl`); confirm `pip show` reports the new version. This is the exact file that publishing the pyclient draft uploads to PyPI.
 4. **Happy path, 64-bit** — with the venv python: `start_session` against `<temp>/x64/x64dbg.exe` (the session start asserts the compat handshake), then exercise whatever surface the release changed and `terminate_session`.
 5. **Happy path, 32-bit** — repeat step 4 against `<temp>/x32/x32dbg.exe`. Do not skip this leg because 64-bit passed: bitness-conditional code can fail silently on x32dbg with x64dbg perfectly healthy, so a green 64-bit run is not evidence about 32-bit.
 6. **Compat gate** — `pip install x64dbg-automate==<previous version>` in the same venv and confirm `start_session` raises `Incompatible x64dbg plugin and client versions ...` (only meaningful when the protocol codename changed).
